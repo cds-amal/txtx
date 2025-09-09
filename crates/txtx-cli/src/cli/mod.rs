@@ -357,7 +357,8 @@ async fn handle_command(
         Command::Cloud(cmd) => handle_cloud_commands(&cmd, buffer_stdin, &env).await?,
         Command::Doctor(cmd) => {
             use doctor::run_doctor;
-            run_doctor(cmd.manifest_path.clone(), cmd.runbook.clone(), cmd.environment.clone()).await?;
+            run_doctor(cmd.manifest_path.clone(), cmd.runbook.clone(), cmd.environment.clone())
+                .await?;
         }
     }
     Ok(())

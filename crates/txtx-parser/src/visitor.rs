@@ -21,37 +21,37 @@ pub trait RunbookVisitor {
             self.visit_variable(variable);
         }
     }
-    
+
     fn visit_addon(&mut self, addon: &AddonBlock) {
         self.visit_attributes(&addon.attributes);
     }
-    
+
     fn visit_signer(&mut self, signer: &SignerBlock) {
         self.visit_attributes(&signer.attributes);
     }
-    
+
     fn visit_action(&mut self, action: &ActionBlock) {
         self.visit_attributes(&action.attributes);
     }
-    
+
     fn visit_output(&mut self, output: &OutputBlock) {
         self.visit_attributes(&output.attributes);
     }
-    
+
     fn visit_variable(&mut self, variable: &VariableDeclaration) {
         self.visit_attributes(&variable.attributes);
     }
-    
+
     fn visit_attributes(&mut self, attrs: &std::collections::HashMap<String, Expression>) {
         for (key, expr) in attrs {
             self.visit_attribute(key, expr);
         }
     }
-    
+
     fn visit_attribute(&mut self, _key: &str, expr: &Expression) {
         self.visit_expression(expr);
     }
-    
+
     fn visit_expression(&mut self, expr: &Expression) {
         match expr {
             Expression::Array(items) => {

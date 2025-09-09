@@ -1,6 +1,6 @@
 //! AST types for txtx runbook language
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -65,10 +65,7 @@ pub enum Expression {
     Reference(Vec<String>),
     Array(Vec<Expression>),
     Object(HashMap<String, Expression>),
-    FunctionCall {
-        name: String,
-        args: Vec<Expression>,
-    },
+    FunctionCall { name: String, args: Vec<Expression> },
 }
 
 // Convenience methods
@@ -76,42 +73,39 @@ impl Expression {
     pub fn string(s: impl Into<String>) -> Self {
         Expression::String(s.into())
     }
-    
+
     pub fn number(n: impl Into<f64>) -> Self {
         Expression::Number(n.into())
     }
-    
+
     pub fn reference(parts: Vec<&str>) -> Self {
         Expression::Reference(parts.iter().map(|s| s.to_string()).collect())
     }
-    
+
     pub fn input_ref(name: &str) -> Self {
         Expression::reference(vec!["input", name])
     }
-    
+
     pub fn action_ref(action: &str, field: &str) -> Self {
         Expression::reference(vec!["action", action, field])
     }
-    
+
     pub fn signer_ref(name: &str) -> Self {
         Expression::reference(vec!["signer", name])
     }
-    
+
     pub fn signer_field(name: &str, field: &str) -> Self {
         Expression::reference(vec!["signer", name, field])
     }
-    
+
     pub fn function_call(name: impl Into<String>, args: Vec<Expression>) -> Self {
-        Expression::FunctionCall {
-            name: name.into(),
-            args,
-        }
+        Expression::FunctionCall { name: name.into(), args }
     }
-    
+
     pub fn bool(b: bool) -> Self {
         Expression::Bool(b)
     }
-    
+
     pub fn object(entries: Vec<(&str, Expression)>) -> Self {
         let mut map = HashMap::new();
         for (key, value) in entries {

@@ -10,28 +10,28 @@ pub trait RunbookTransform {
         for addon in &mut runbook.addons {
             self.transform_addon(addon);
         }
-        
+
         // Transform signers
         for signer in &mut runbook.signers {
             self.transform_signer(signer);
         }
-        
+
         // Transform actions
         for action in &mut runbook.actions {
             self.transform_action(action);
         }
-        
+
         // Transform outputs
         for output in &mut runbook.outputs {
             self.transform_output(output);
         }
-        
+
         // Transform variables
         for var in &mut runbook.variables {
             self.transform_variable(var);
         }
     }
-    
+
     fn transform_addon(&mut self, addon: &mut AddonBlock) {
         let mut new_attrs = HashMap::new();
         for (key, expr) in addon.attributes.drain() {
@@ -40,7 +40,7 @@ pub trait RunbookTransform {
         }
         addon.attributes = new_attrs;
     }
-    
+
     fn transform_signer(&mut self, signer: &mut SignerBlock) {
         let mut new_attrs = HashMap::new();
         for (key, expr) in signer.attributes.drain() {
@@ -49,7 +49,7 @@ pub trait RunbookTransform {
         }
         signer.attributes = new_attrs;
     }
-    
+
     fn transform_action(&mut self, action: &mut ActionBlock) {
         let mut new_attrs = HashMap::new();
         for (key, expr) in action.attributes.drain() {
@@ -58,7 +58,7 @@ pub trait RunbookTransform {
         }
         action.attributes = new_attrs;
     }
-    
+
     fn transform_output(&mut self, output: &mut OutputBlock) {
         let mut new_attrs = HashMap::new();
         for (key, expr) in output.attributes.drain() {
@@ -67,7 +67,7 @@ pub trait RunbookTransform {
         }
         output.attributes = new_attrs;
     }
-    
+
     fn transform_variable(&mut self, var: &mut VariableDeclaration) {
         let mut new_attrs = HashMap::new();
         for (key, expr) in var.attributes.drain() {
@@ -76,13 +76,11 @@ pub trait RunbookTransform {
         }
         var.attributes = new_attrs;
     }
-    
+
     fn transform_expression(&mut self, expr: Expression) -> Expression {
         match expr {
             Expression::Array(items) => {
-                Expression::Array(items.into_iter()
-                    .map(|e| self.transform_expression(e))
-                    .collect())
+                Expression::Array(items.into_iter().map(|e| self.transform_expression(e)).collect())
             }
             Expression::Object(mut fields) => {
                 let mut new_fields = HashMap::new();
@@ -91,14 +89,10 @@ pub trait RunbookTransform {
                 }
                 Expression::Object(new_fields)
             }
-            Expression::FunctionCall { name, args } => {
-                Expression::FunctionCall {
-                    name,
-                    args: args.into_iter()
-                        .map(|e| self.transform_expression(e))
-                        .collect(),
-                }
-            }
+            Expression::FunctionCall { name, args } => Expression::FunctionCall {
+                name,
+                args: args.into_iter().map(|e| self.transform_expression(e)).collect(),
+            },
             _ => expr,
         }
     }
@@ -111,11 +105,9 @@ pub struct InputSubstitution {
 
 impl InputSubstitution {
     pub fn new() -> Self {
-        Self {
-            values: HashMap::new(),
-        }
+        Self { values: HashMap::new() }
     }
-    
+
     pub fn add_input(&mut self, name: String, value: Expression) {
         self.values.insert(name, value);
     }
@@ -133,9 +125,7 @@ impl RunbookTransform for InputSubstitution {
                 }
             }
             Expression::Array(items) => {
-                Expression::Array(items.into_iter()
-                    .map(|e| self.transform_expression(e))
-                    .collect())
+                Expression::Array(items.into_iter().map(|e| self.transform_expression(e)).collect())
             }
             Expression::Object(mut fields) => {
                 let mut new_fields = HashMap::new();
@@ -144,14 +134,10 @@ impl RunbookTransform for InputSubstitution {
                 }
                 Expression::Object(new_fields)
             }
-            Expression::FunctionCall { name, args } => {
-                Expression::FunctionCall {
-                    name,
-                    args: args.into_iter()
-                        .map(|e| self.transform_expression(e))
-                        .collect(),
-                }
-            }
+            Expression::FunctionCall { name, args } => Expression::FunctionCall {
+                name,
+                args: args.into_iter().map(|e| self.transform_expression(e)).collect(),
+            },
             _ => expr,
         }
     }
