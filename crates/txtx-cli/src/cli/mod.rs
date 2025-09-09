@@ -5,9 +5,11 @@ use env::TxtxEnv;
 use hiro_system_kit::{self, Logger};
 use runbooks::load_runbook_from_manifest;
 use std::process;
+use std::thread;
 use txtx_cloud::{LoginCommand, PublishRunbook};
 
 mod docs;
+mod doctor;
 mod env;
 mod lsp;
 mod runbooks;
@@ -88,6 +90,9 @@ enum Command {
     /// Txtx cloud commands
     #[clap(subcommand, name = "cloud", bin_name = "cloud")]
     Cloud(CloudCommand),
+    /// Diagnose issues with runbook configuration
+    #[clap(name = "doctor", bin_name = "doctor")]
+    Doctor(DoctorCommand),
 }
 
 #[derive(Subcommand, PartialEq, Clone, Debug)]
@@ -137,6 +142,18 @@ pub struct CheckRunbook {
 
 #[derive(Parser, PartialEq, Clone, Debug)]
 pub struct GetDocumentation;
+
+#[derive(Parser, PartialEq, Clone, Debug)]
+pub struct DoctorCommand {
+    /// Path to the manifest
+    #[arg(long = "manifest-file-path", short = 'm', default_value = "./txtx.yml")]
+    pub manifest_path: Option<String>,
+    /// Specific runbook to validate (validates all if not specified)
+    pub runbook: Option<String>,
+    /// Choose the environment variables to validate against from those configured in the txtx.yml
+    #[arg(long = "env", short = 'e')]
+    pub environment: Option<String>,
+}
 
 #[derive(Parser, PartialEq, Clone, Debug)]
 pub struct InspectRunbook {
@@ -295,6 +312,7 @@ async fn handle_command(
     ctx: &Context,
     buffer_stdin: Option<String>,
 ) -> Result<(), String> {
+    dotenv().ok();
     let env = TxtxEnv::load();
     match opts.command {
         Command::Check(cmd) => {
@@ -337,6 +355,10 @@ async fn handle_command(
             thread::sleep(std::time::Duration::new(1800, 0));
         }
         Command::Cloud(cmd) => handle_cloud_commands(&cmd, buffer_stdin, &env).await?,
+        Command::Doctor(cmd) => {
+            use doctor::run_doctor;
+            run_doctor(cmd.manifest_path.clone(), cmd.runbook.clone(), cmd.environment.clone()).await?;
+        }
     }
     Ok(())
 }

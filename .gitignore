@@ -16,7 +16,11 @@ addons/sp1/examples/fibonacci/program/target
 addons/ovm/examples/cache/*
 addons/ovm/examples/out/*
 tarpaulin-report.html
--e 
+
+# Tree-sitter build artifacts
+crates/tree-sitter-txtx/build/
+crates/tree-sitter-txtx/node_modules/
+
 # Temporary test files
 addons/evm/fixtures/kitchenSink/output.json
 addons/evm/generated_deployment.tx

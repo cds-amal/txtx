@@ -1,0 +1,26 @@
+addon "evm" {
+    chain_id = 1
+    rpc_api_url = "https://mainnet.infura.io"
+}
+
+signer "deployer" "evm::secret_key" {
+    secret_key = input.private_key
+}
+
+action "send" "evm::send_eth" {
+    signer = signer.deployer
+    to = "0x1234567890123456789012345678901234567890"
+    value = evm::to_wei(0.1, "ether")
+}
+
+output "sender" {
+    value = action.send.from
+}
+
+output "recipient" {
+    value = action.send.to
+}
+
+output "tx_hash" {
+    value = action.send.tx_hash
+}
