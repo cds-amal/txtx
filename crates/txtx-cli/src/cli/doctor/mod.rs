@@ -205,26 +205,20 @@ pub async fn run_doctor(
     }
 }
 
-/// Test helper to validate a runbook string and return the result
-#[cfg(test)]
-pub fn validate_runbook_content(content: &str) -> DoctorResult {
-    let runbook = parse(content).expect("Failed to parse test runbook");
-    let mut result = DoctorResult {
-        errors: Vec::new(),
-        warnings: Vec::new(),
-        suggestions: Vec::new(),
-    };
-    parser_validator::validate_with_visitor(&runbook, &mut result, "test.tx");
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Use the shared test helper
+    // Helper to validate fixture content
     fn validate_fixture(content: &str) -> DoctorResult {
-        validate_runbook_content(content)
+        let runbook = parse(content).expect("Failed to parse test runbook");
+        let mut result = DoctorResult {
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            suggestions: Vec::new(),
+        };
+        parser_validator::validate_with_visitor(&runbook, &mut result, "test.tx");
+        result
     }
 
     #[test]
@@ -420,6 +414,160 @@ mod tests {
         let result = validate_fixture(runbook);
         assert_eq!(result.errors.len(), 0, "tx_hash is a valid output for send_eth");
     }
+
+    #[test]
+    fn test_environment_global_inheritance() {
+        use txtx_core::manifest::WorkspaceManifest;
+        use txtx_core::indexmap::IndexMap;
+        
+        let runbook_content = r#"
+            addon "evm" {
+                network_id = input.CHAIN_ID
+                rpc_api_url = input.RPC_URL
+            }
+            
+            action "send" "evm::send_eth" {
+                value = input.AMOUNT
+            }
+        "#;
+        
+        let runbook = parse(runbook_content).expect("Failed to parse");
+        
+        // Create a manifest with global and dev environments
+        let mut manifest = WorkspaceManifest {
+            name: "test".to_string(),
+            id: "test-id".to_string(),
+            runbooks: Vec::new(),
+            environments: IndexMap::new(),
+            location: None,
+        };
+        
+        // Add global environment
+        let mut global_env = IndexMap::new();
+        global_env.insert("CHAIN_ID".to_string(), "1".to_string());
+        global_env.insert("RPC_URL".to_string(), "https://mainnet.infura.io".to_string());
+        manifest.environments.insert("global".to_string(), global_env);
+        
+        // Add dev environment that overrides CHAIN_ID
+        let mut dev_env = IndexMap::new();
+        dev_env.insert("CHAIN_ID".to_string(), "5".to_string());
+        dev_env.insert("AMOUNT".to_string(), "1000".to_string());
+        manifest.environments.insert("dev".to_string(), dev_env);
+        
+        let mut result = DoctorResult {
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            suggestions: Vec::new(),
+        };
+        
+        // Test with dev environment - should inherit RPC_URL from global
+        validate_inputs_against_manifest(
+            &runbook,
+            &manifest,
+            Some(&"dev".to_string()),
+            &mut result,
+            Path::new("test.tx"),
+        );
+        
+        assert_eq!(result.errors.len(), 0, "All inputs should be found through inheritance");
+        assert!(result.suggestions.iter().any(|s| 
+            s.message.contains("inherits from 'global'")),
+            "Should mention environment inheritance"
+        );
+    }
+
+    #[test]
+    fn test_missing_input_in_environment() {
+        use txtx_core::manifest::WorkspaceManifest;
+        use txtx_core::indexmap::IndexMap;
+        
+        let runbook_content = r#"
+            output "test" {
+                value = input.MISSING_VAR
+            }
+        "#;
+        
+        let runbook = parse(runbook_content).expect("Failed to parse");
+        
+        let mut manifest = WorkspaceManifest {
+            name: "test".to_string(),
+            id: "test-id".to_string(),
+            runbooks: Vec::new(),
+            environments: IndexMap::new(),
+            location: None,
+        };
+        
+        // Add environment without the required input
+        let mut env = IndexMap::new();
+        env.insert("OTHER_VAR".to_string(), "value".to_string());
+        manifest.environments.insert("prod".to_string(), env);
+        
+        let mut result = DoctorResult {
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            suggestions: Vec::new(),
+        };
+        
+        validate_inputs_against_manifest(
+            &runbook,
+            &manifest,
+            Some(&"prod".to_string()),
+            &mut result,
+            Path::new("test.tx"),
+        );
+        
+        assert_eq!(result.errors.len(), 1);
+        assert!(result.errors[0].message.contains("MISSING_VAR"));
+        assert!(result.suggestions.iter().any(|s| 
+            s.example.as_ref().map_or(false, |e| e.contains("global"))),
+            "Should suggest adding to global environment"
+        );
+    }
+
+    #[test]
+    fn test_cli_precedence_note() {
+        use txtx_core::manifest::WorkspaceManifest;
+        use txtx_core::indexmap::IndexMap;
+        
+        let runbook_content = r#"
+            output "test" {
+                value = input.MY_VAR
+            }
+        "#;
+        
+        let runbook = parse(runbook_content).expect("Failed to parse");
+        
+        let mut manifest = WorkspaceManifest {
+            name: "test".to_string(),
+            id: "test-id".to_string(),
+            runbooks: Vec::new(),
+            environments: IndexMap::new(),
+            location: None,
+        };
+        
+        let mut env = IndexMap::new();
+        env.insert("MY_VAR".to_string(), "env_value".to_string());
+        manifest.environments.insert("global".to_string(), env);
+        
+        let mut result = DoctorResult {
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            suggestions: Vec::new(),
+        };
+        
+        validate_inputs_against_manifest(
+            &runbook,
+            &manifest,
+            None,
+            &mut result,
+            Path::new("test.tx"),
+        );
+        
+        assert!(result.suggestions.iter().any(|s| 
+            s.message.contains("CLI take precedence")),
+            "Should mention CLI precedence"
+        );
+    }
 }
 
                 if !found {
@@ -559,12 +707,65 @@ fn validate_inputs_against_manifest(
     result: &mut DoctorResult,
     file_path: &Path,
 ) {
-    // Get the environment to use
-    let env_name = environment.or_else(|| manifest.environments.keys().next()).map(|s| s.as_str());
+    // Determine which environment to use
+    let env_name = if let Some(env) = environment {
+        // Use the explicitly specified environment
+        Some(env.as_str())
+    } else if manifest.environments.contains_key("global") {
+        // Default to global if no environment specified
+        Some("global")
+    } else {
+        // Fall back to first available environment
+        manifest.environments.keys().next().map(|s| s.as_str())
+    };
 
-    // Get available inputs from the environment
-    let available_inputs =
-        if let Some(env_name) = env_name { manifest.environments.get(env_name) } else { None };
+    // Build the effective environment by merging global with specific environment
+    let mut effective_inputs = HashMap::new();
+    
+    // First, add all inputs from global environment
+    if let Some(global_inputs) = manifest.environments.get("global") {
+        for (key, value) in global_inputs {
+            effective_inputs.insert(key.clone(), value.clone());
+        }
+    }
+    
+    // Then, overlay the specific environment (if different from global)
+    if let Some(env_name) = env_name {
+        if env_name != "global" {
+            if let Some(env_inputs) = manifest.environments.get(env_name) {
+                for (key, value) in env_inputs {
+                    effective_inputs.insert(key.clone(), value.clone());
+                }
+            } else {
+                // Environment specified but not found
+                result.errors.push(DoctorError {
+                    message: format!("Environment '{}' is not defined in the manifest", env_name),
+                    _file: file_path.to_string_lossy().to_string(),
+                    _line: None,
+                    _column: None,
+                    context: Some(format!(
+                        "Available environments: {}",
+                        manifest.environments.keys().cloned().collect::<Vec<_>>().join(", ")
+                    )),
+                    documentation_link: Some(
+                        "https://docs.txtx.sh/concepts/manifest#environments".to_string(),
+                    ),
+                });
+            }
+        }
+    }
+
+    // Add info about environment inheritance
+    if env_name.is_some() && env_name != Some("global") && manifest.environments.contains_key("global") {
+        result.suggestions.push(DoctorSuggestion {
+            message: format!(
+                "Environment '{}' inherits from 'global'. Values in '{}' override those in 'global'.",
+                env_name.unwrap(),
+                env_name.unwrap()
+            ),
+            example: None,
+        });
+    }
 
     // Collect all input references from the runbook
     let mut input_refs = std::collections::HashSet::new();
@@ -574,23 +775,29 @@ fn validate_inputs_against_manifest(
     for input_ref in &input_refs {
         let input_name = &input_ref[6..]; // Skip "input." prefix
 
-        if let Some(inputs) = available_inputs {
-            if !inputs.contains_key(input_name) {
-                // Input not found in environment
+        if !effective_inputs.is_empty() {
+            if !effective_inputs.contains_key(input_name) {
+                // Input not found in effective environment
+                let mut context_msg = format!(
+                    "Add '{}' to your txtx.yml file",
+                    input_name
+                );
+                
+                // Provide specific guidance on where to add it
+                if manifest.environments.contains_key("global") {
+                    context_msg.push_str(" (consider adding to 'global' if used across environments)");
+                }
+                
                 result.errors.push(DoctorError {
                     message: format!(
-                        "Input '{}' is not defined in environment '{}'",
+                        "Input '{}' is not defined in environment '{}' (including inherited values)",
                         input_ref,
                         env_name.unwrap_or("default")
                     ),
                     _file: file_path.to_string_lossy().to_string(),
                     _line: None,
                     _column: None,
-                    context: Some(format!(
-                        "Add '{}' to the '{}' environment in your txtx.yml file",
-                        input_name,
-                        env_name.unwrap_or("default")
-                    )),
+                    context: Some(context_msg),
                     documentation_link: Some(
                         "https://docs.txtx.sh/concepts/manifest#environments".to_string(),
                     ),
@@ -598,11 +805,11 @@ fn validate_inputs_against_manifest(
 
                 // Add a suggestion with example
                 result.suggestions.push(DoctorSuggestion {
-                    message: "Add the missing input to your txtx.yml environment section"
-                        .to_string(),
+                    message: "Add the missing input to your environment".to_string(),
                     example: Some(format!(
-                        "environments:\n  {}:\n    {}: \"<value>\"",
-                        env_name.unwrap_or("default"),
+                        "environments:\n  {}:\n    {}: \"<value>\"\n\n# Or add to global for all environments:\nenvironments:\n  global:\n    {}: \"<value>\"",
+                        env_name.unwrap_or("global"),
+                        input_name,
                         input_name
                     )),
                 });
@@ -621,27 +828,43 @@ fn validate_inputs_against_manifest(
         }
     }
 
-    // Also check for unused environment variables
-    if let Some(inputs) = available_inputs {
-        for (input_name, _) in inputs {
+    // Check for unused environment variables
+    if !effective_inputs.is_empty() {
+        for (input_name, _) in &effective_inputs {
             let input_ref = format!("input.{}", input_name);
             if !input_refs.contains(&input_ref) {
+                // Determine if it's from global or specific environment
+                let source = if manifest.environments.get("global").map_or(false, |g| g.contains_key(input_name)) 
+                    && env_name != Some("global") {
+                    "inherited from global"
+                } else {
+                    "defined"
+                };
+                
                 result.warnings.push(DoctorWarning {
                     message: format!(
-                        "Environment variable '{}' is defined but not used in this runbook",
-                        input_name
+                        "Environment variable '{}' is {} but not used in this runbook",
+                        input_name,
+                        source
                     ),
                     _file: file_path.to_string_lossy().to_string(),
                     _line: None,
                     _column: None,
                     suggestion: Some(format!(
-                        "Consider removing '{}' from the '{}' environment if it's not needed",
-                        input_name,
-                        env_name.unwrap_or("default")
+                        "Consider removing '{}' if it's not needed",
+                        input_name
                     )),
                 });
             }
         }
+    }
+    
+    // Add note about CLI precedence
+    if !input_refs.is_empty() {
+        result.suggestions.push(DoctorSuggestion {
+            message: "Note: Values passed via --input on CLI take precedence over environment values".to_string(),
+            example: Some("txtx run myrunbook --input MY_VAR=override_value".to_string()),
+        });
     }
 }
 

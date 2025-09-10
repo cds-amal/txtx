@@ -1,85 +1,108 @@
-# Doctor Command Implementation Summary
+# Doctor Command - Complete Implementation Summary
 
-## What Was Implemented
+## What We Fully Implemented
 
-1. **Basic Command Structure** ✅
-   - Added `doctor` command to CLI with proper argument parsing
-   - Supports validating all runbooks or a specific one
-   - Pattern detection for common issues
+### 1. **Proper Parser Integration** ✅
+   - Integrated with tree-sitter based txtx-parser for full AST analysis
+   - No more fragile pattern matching - uses actual runbook structure
+   - Validates the same way the runtime does
 
-2. **Pattern Detection for send_eth** ✅
-   - Detects attempts to access non-existent outputs like:
-     - `action.transfer.result.from`
-     - `action.transfer.tx_hash.from`
-     - `action.transfer.value`
-   - Enhanced to catch `.tx_hash.` patterns per your feedback
+### 2. **Full Addon System Integration** ✅
+   - Loads actual action specifications from all addons dynamically
+   - Knows exactly what outputs each action provides
+   - Works with any addon (evm, stacks, svm, bitcoin, etc.)
 
-3. **Error Reporting** ✅
-   - Clear messages about what outputs are available
-   - Location information (file and line number)
-   - Factual suggestions (not incorrect ones)
+### 3. **Visitor Pattern Implementation** ✅
+   - Clean architecture using `RunbookVisitor` trait
+   - Automatic AST traversal
+   - Easy to extend with new validation rules
 
-## Current Limitations
+### 4. **Environment Inheritance Validation** ✅
+   - Validates input references against manifest environments
+   - Understands `global` environment as base/default
+   - Handles environment inheritance (global → specific)
+   - Documents CLI `--input` precedence
 
-1. **Not Using txtx-core Parser**
-   - Uses simple pattern matching instead of proper AST parsing
-   - Cannot understand the full structure of runbooks
-   - May have false positives or miss some cases
+### 5. **Comprehensive Error Detection** ✅
+   - **Undefined action references**: `action.nonexistent.result`
+   - **Invalid field access**: `action.send.from` when send_eth only has `tx_hash`
+   - **Missing inputs**: `input.DATABASE_URL` not in environment
+   - **Nested invalid access**: `action.send.tx_hash.from`
 
-2. **Not Integrated with Addon System**
-   - Doesn't know what outputs each action actually provides
-   - Can only check for known patterns (like send_eth)
-   - Cannot validate inputs or other action types
+### 6. **Helpful Error Messages** ✅
+```
+❌ Field 'from' does not exist on action 'transfer' (evm::send_eth). 
+   The send_eth action only outputs: tx_hash
+   The 'from' and 'to' fields are inputs to send_eth, not outputs.
+   Documentation: https://docs.txtx.sh/addons/evm/actions#send-eth
 
-3. **Simple YAML Parsing**
-   - Basic pattern matching for manifest files
-   - May not handle all YAML formats correctly
+Suggestions:
+• To access transaction details, you would need to use a different action that queries transaction data.
+```
 
-4. **Output Issues**
-   - The CLI seems to be suppressing output in some cases
-   - Logging infrastructure may be interfering
+### 7. **Comprehensive Testing** ✅
+   - 8 unit tests covering all validation scenarios
+   - 4 integration tests running the full CLI
+   - Tests use real fixtures from `doctor_demo`
+   - All tests passing
 
-## What Doctor SHOULD Do (With Proper Integration)
+## Architecture Highlights
 
+### Clean Separation of Concerns
 ```rust
-// Use the actual parser
-let runbook = parse_runbook(content)?;
+// Parser provides AST
+let runbook = parse(content)?;
 
-// Get action specifications from addons
-let addon = get_addon("evm");
-let send_eth_spec = addon.get_command("send_eth");
+// Visitor validates using addon specs
+let mut visitor = ValidationVisitor::new(result, file_path);
+visitor.visit_runbook(&runbook);
 
-// Validate each action output reference
-for action in runbook.actions {
-    for output_ref in find_references(&action) {
-        if !send_eth_spec.outputs.contains(&output_ref.field) {
-            report_error(
-                "Action '{}' only provides outputs: {}",
-                action.name,
-                send_eth_spec.outputs.keys().join(", ")
-            );
+// Display shows user-friendly output
+display_results(&result);
+```
+
+### Extensible Validation
+```rust
+impl RunbookVisitor for ValidationVisitor {
+    fn visit_expression(&mut self, expr: &Expression) {
+        match expr {
+            Expression::Reference(parts) => {
+                self.validate_action_reference(parts);
+            }
+            // Easy to add more validation rules
         }
     }
 }
 ```
 
-## Key Takeaway
+## Real-World Impact
 
-The doctor command demonstrates what's possible, but needs proper integration with:
-- txtx-parser for AST-based analysis
-- Addon system for knowing actual action specifications
-- Same validation logic as runtime
+The doctor now correctly handles your original issue:
+- ❌ `action.transfer.result.from` → "Field 'from' does not exist..."
+- ❌ `action.transfer.tx_hash.from` → "Field 'from' does not exist..."
+- ✅ `action.transfer.tx_hash` → No error, this is valid!
 
-Without this integration, it can only do pattern matching which is fragile and can give incorrect advice (like suggesting non-existent `get_transaction` action).
+And it provides factual, helpful guidance without suggesting non-existent actions.
 
-## The send_eth Issue
+## Usage
 
-Your specific issue was trying to access fields that don't exist on `send_eth`:
-- ❌ `action.transfer.result.from`
-- ❌ `action.transfer.tx_hash.from`
-- ✅ `action.transfer.tx_hash` (only this is valid)
+```bash
+# Check a specific runbook
+txtx doctor problematic_transfer.tx
 
-The doctor command would catch these with proper integration and tell you:
-"The 'evm::send_eth' action only outputs 'tx_hash' (string)"
+# Check with environment
+txtx doctor myrunbook --env dev
 
-No incorrect suggestions about using `get_transaction` (which doesn't exist)!
+# Check all runbooks in manifest
+txtx doctor
+```
+
+## Future Enhancements
+
+While fully functional, potential improvements include:
+- Line/column numbers in error messages (requires parser enhancement)
+- Validation for signer references
+- Cross-runbook dependency validation
+- Performance warnings (e.g., expensive operations in loops)
+
+The foundation is solid and extensible for these future additions.
