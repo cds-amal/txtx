@@ -5,7 +5,7 @@ use txtx_core::kit::types::commands::{CommandSpecification, PreCommandSpecificat
 use txtx_core::manifest::WorkspaceManifest;
 use txtx_parser::{parse, Runbook, Expression};
 
-mod parser_validator;
+pub(crate) mod parser_validator;
 
 #[derive(Debug)]
 pub struct DoctorResult {
@@ -201,9 +201,226 @@ pub async fn run_doctor(
                             analyze_runbook_file(&path)?;
                             found = true;
                             break;
-                        }
-                    }
-                }
+        }
+    }
+}
+
+/// Test helper to validate a runbook string and return the result
+#[cfg(test)]
+pub fn validate_runbook_content(content: &str) -> DoctorResult {
+    let runbook = parse(content).expect("Failed to parse test runbook");
+    let mut result = DoctorResult {
+        errors: Vec::new(),
+        warnings: Vec::new(),
+        suggestions: Vec::new(),
+    };
+    parser_validator::validate_with_visitor(&runbook, &mut result, "test.tx");
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Use the shared test helper
+    fn validate_fixture(content: &str) -> DoctorResult {
+        validate_runbook_content(content)
+    }
+
+    #[test]
+    fn test_problematic_transfer() {
+        let content = include_str!("../../../../../addons/evm/fixtures/doctor_demo/runbooks/problematic_transfer.tx");
+        let result = validate_fixture(content);
+
+        // This fixture has 4 errors: from, to, value, gas_used
+        assert_eq!(result.errors.len(), 4, "Expected 4 errors in problematic_transfer.tx");
+
+        // Check specific errors
+        let error_messages: Vec<_> = result.errors.iter()
+            .map(|e| &e.message)
+            .collect();
+
+        assert!(error_messages.iter().any(|m| m.contains("from")));
+        assert!(error_messages.iter().any(|m| m.contains("to")));
+        assert!(error_messages.iter().any(|m| m.contains("value")));
+        assert!(error_messages.iter().any(|m| m.contains("gas_used")));
+
+        // Should have suggestions for accessing transaction details
+        assert!(!result.suggestions.is_empty());
+    }
+
+    #[test]
+    fn test_correct_transfer() {
+        let content = include_str!("../../../../../addons/evm/fixtures/doctor_demo/runbooks/correct_transfer.tx");
+        let result = validate_fixture(content);
+
+        // This fixture should have no errors
+        assert_eq!(result.errors.len(), 0, "Expected no errors in correct_transfer.tx");
+        assert_eq!(result.warnings.len(), 0, "Expected no warnings in correct_transfer.tx");
+    }
+
+    #[test]
+    fn test_undefined_action() {
+        // Take a valid fixture and break it by referencing undefined action
+        let valid = include_str!("../../../../../addons/evm/fixtures/doctor_demo/runbooks/correct_transfer.tx");
+        let broken = valid.replace("action.transfer.tx_hash", "action.nonexistent.tx_hash");
+
+        let result = validate_fixture(&broken);
+        assert_eq!(result.errors.len(), 1);
+        assert!(result.errors[0].message.contains("undefined action"));
+        assert!(result.errors[0].context.is_some());
+    }
+
+    #[test]
+    fn test_send_eth_invalid_field_access() {
+        let runbook = r#"
+            addon "evm" { 
+                network_id = 1 
+            }
+            
+            action "send" "evm::send_eth" { 
+                from = "0x123"
+                to = "0x456"
+                value = "1000" 
+            }
+            
+            output "bad" { 
+                value = action.send.from 
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        assert_eq!(result.errors.len(), 1);
+        assert!(result.errors[0].message.contains("Field 'from' does not exist"));
+        assert!(result.errors[0].message.contains("send_eth"));
+        assert!(result.errors[0].message.contains("only outputs: tx_hash"));
+        assert!(result.errors[0].documentation_link.is_some());
+    }
+
+    #[test]
+    fn test_invalid_action_fields() {
+        // Table-driven test for common invalid field access patterns
+        let test_cases = vec![
+            ("evm::send_eth", "from", "Field 'from' does not exist"),
+            ("evm::send_eth", "to", "Field 'to' does not exist"),
+            ("evm::send_eth", "gas", "Field 'gas' does not exist"),
+            ("evm::send_eth", "gas_used", "Field 'gas_used' does not exist"),
+        ];
+
+        for (action_type, field, expected_error) in test_cases {
+            let runbook = format!(r#"
+                addon "evm" {{ 
+                    network_id = 1 
+                }}
+                
+                action "test" "{}" {{ 
+                    value = "1000" 
+                }}
+                
+                output "bad" {{ 
+                    value = action.test.{} 
+                }}
+            "#, action_type, field);
+
+            let result = validate_fixture(&runbook);
+            assert_eq!(
+                result.errors.len(), 
+                1, 
+                "Testing field '{}' on {}", 
+                field, 
+                action_type
+            );
+            assert!(
+                result.errors[0].message.contains(expected_error),
+                "Expected error message to contain '{}' when accessing field '{}' on {}",
+                expected_error,
+                field,
+                action_type
+            );
+        }
+    }
+
+    #[test]
+    fn test_nested_invalid_field_access() {
+        let runbook = r#"
+            addon "evm" { 
+                network_id = 1 
+            }
+            
+            action "send" "evm::send_eth" { 
+                value = "1000" 
+            }
+            
+            output "nested_bad" { 
+                value = action.send.result.from 
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        // Should detect invalid field access even with nested path
+        assert!(!result.errors.is_empty());
+    }
+
+    #[test]
+    fn test_multiple_errors_in_one_runbook() {
+        let runbook = r#"
+            addon "evm" { 
+                network_id = 1 
+            }
+            
+            action "send1" "evm::send_eth" { 
+                value = "1000" 
+            }
+            
+            output "error1" { 
+                value = action.send1.from 
+            }
+            
+            output "error2" { 
+                value = action.send1.to 
+            }
+            
+            output "error3" { 
+                value = action.undefined.result
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        assert_eq!(result.errors.len(), 3, "Expected 3 errors");
+        
+        // Should have different error types
+        let has_field_errors = result.errors.iter()
+            .filter(|e| e.message.contains("does not exist on action"))
+            .count() == 2;
+        let has_undefined_error = result.errors.iter()
+            .any(|e| e.message.contains("undefined action"));
+            
+        assert!(has_field_errors);
+        assert!(has_undefined_error);
+    }
+
+    #[test]
+    fn test_valid_field_access() {
+        let runbook = r#"
+            addon "evm" { 
+                network_id = 1 
+            }
+            
+            action "send" "evm::send_eth" { 
+                from = "0x123"
+                to = "0x456"
+                value = "1000" 
+            }
+            
+            output "valid" { 
+                value = action.send.tx_hash 
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        assert_eq!(result.errors.len(), 0, "tx_hash is a valid output for send_eth");
+    }
+}
 
                 if !found {
                     return Err(
