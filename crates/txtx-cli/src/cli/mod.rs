@@ -15,6 +15,13 @@ mod lsp;
 mod runbooks;
 mod snapshots;
 
+/// Parse a single key-value pair
+fn parse_key_val(s: &str) -> Result<(String, String), String> {
+    let pos = s.find('=')
+        .ok_or_else(|| format!("invalid KEY=VALUE: no '=' found in '{}'", s))?;
+    Ok((s[..pos].to_string(), s[pos + 1..].to_string()))
+}
+
 pub const AUTH_SERVICE_URL_KEY: &str = "AUTH_SERVICE_URL";
 pub const AUTH_CALLBACK_PORT_KEY: &str = "AUTH_CALLBACK_PORT";
 pub const TXTX_CONSOLE_URL_KEY: &str = "TXTX_CONSOLE_URL";
@@ -153,6 +160,9 @@ pub struct DoctorCommand {
     /// Choose the environment variables to validate against from those configured in the txtx.yml
     #[arg(long = "env", short = 'e')]
     pub environment: Option<String>,
+    /// Input variable overrides (format: name=value)
+    #[arg(long = "input", short = 'i', value_parser = parse_key_val)]
+    pub inputs: Vec<(String, String)>,
 }
 
 #[derive(Parser, PartialEq, Clone, Debug)]
@@ -357,7 +367,12 @@ async fn handle_command(
         Command::Cloud(cmd) => handle_cloud_commands(&cmd, buffer_stdin, &env).await?,
         Command::Doctor(cmd) => {
             use doctor::run_doctor;
-            run_doctor(cmd.manifest_path.clone(), cmd.runbook.clone(), cmd.environment.clone())
+            run_doctor(
+                cmd.manifest_path.clone(), 
+                cmd.runbook.clone(), 
+                cmd.environment.clone(),
+                cmd.inputs.clone()
+            )
                 .await?;
         }
     }

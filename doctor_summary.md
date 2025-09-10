@@ -22,14 +22,21 @@
    - Understands `global` environment as base/default
    - Handles environment inheritance (global → specific)
    - Documents CLI `--input` precedence
+   
+### 5. **CLI Input Overrides** ✅
+   - Accepts `--input KEY=VALUE` or `-i KEY=VALUE` flags
+   - Multiple inputs can be provided
+   - CLI inputs take precedence over environment values
+   - Useful for providing secrets without storing in manifest
+   - Example: `txtx doctor --env mainnet --input PRIVATE_KEY=0x123...`
 
-### 5. **Comprehensive Error Detection** ✅
+### 6. **Comprehensive Error Detection** ✅
    - **Undefined action references**: `action.nonexistent.result`
    - **Invalid field access**: `action.send.from` when send_eth only has `tx_hash`
    - **Missing inputs**: `input.DATABASE_URL` not in environment
    - **Nested invalid access**: `action.send.tx_hash.from`
 
-### 6. **Helpful Error Messages** ✅
+### 7. **Helpful Error Messages** ✅
 ```
 ❌ Field 'from' does not exist on action 'transfer' (evm::send_eth). 
    The send_eth action only outputs: tx_hash
@@ -40,7 +47,7 @@ Suggestions:
 • To access transaction details, you would need to use a different action that queries transaction data.
 ```
 
-### 7. **Comprehensive Testing** ✅
+### 8. **Comprehensive Testing** ✅
    - 8 unit tests covering all validation scenarios
    - 4 integration tests running the full CLI
    - Tests use real fixtures from `doctor_demo`

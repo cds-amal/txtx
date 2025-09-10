@@ -44,6 +44,7 @@ pub async fn run_doctor(
     manifest_path: Option<String>,
     runbook_name: Option<String>,
     environment: Option<String>,
+    cli_inputs: Vec<(String, String)>,
 ) -> Result<(), String> {
     let manifest_path = manifest_path.unwrap_or_else(|| "./txtx.yml".to_string());
 
@@ -84,6 +85,7 @@ pub async fn run_doctor(
                                 &main_file,
                                 Some(&manifest),
                                 environment.as_ref(),
+                                &cli_inputs,
                             )?;
                             found = true;
                         } else {
@@ -97,6 +99,7 @@ pub async fn run_doctor(
                             &runbook_path,
                             Some(&manifest),
                             environment.as_ref(),
+                            &cli_inputs,
                         )?;
                         found = true;
                     } else {
@@ -107,6 +110,7 @@ pub async fn run_doctor(
                                 &runbook_path_tx,
                                 Some(&manifest),
                                 environment.as_ref(),
+                                &cli_inputs,
                             )?;
                             found = true;
                         }
@@ -153,6 +157,7 @@ pub async fn run_doctor(
                             &file_to_check,
                             Some(&manifest),
                             environment.as_ref(),
+                            &cli_inputs,
                         )
                         .is_err()
                         {
@@ -467,6 +472,7 @@ mod tests {
             Some(&"dev".to_string()),
             &mut result,
             Path::new("test.tx"),
+            &[],
         );
         
         assert_eq!(result.errors.len(), 0, "All inputs should be found through inheritance");
@@ -514,6 +520,7 @@ mod tests {
             Some(&"prod".to_string()),
             &mut result,
             Path::new("test.tx"),
+            &[],
         );
         
         assert_eq!(result.errors.len(), 1);
@@ -561,11 +568,72 @@ mod tests {
             None,
             &mut result,
             Path::new("test.tx"),
+            &[],
         );
         
         assert!(result.suggestions.iter().any(|s| 
             s.message.contains("CLI take precedence")),
             "Should mention CLI precedence"
+        );
+    }
+
+    #[test]
+    fn test_cli_inputs_override_environment() {
+        use txtx_core::manifest::WorkspaceManifest;
+        use txtx_core::indexmap::IndexMap;
+        
+        let runbook_content = r#"
+            output "test" {
+                value = input.MY_VAR
+            }
+            output "test2" {
+                value = input.ANOTHER_VAR
+            }
+        "#;
+        
+        let runbook = parse(runbook_content).expect("Failed to parse");
+        
+        let mut manifest = WorkspaceManifest {
+            name: "test".to_string(),
+            id: "test-id".to_string(),
+            runbooks: Vec::new(),
+            environments: IndexMap::new(),
+            location: None,
+        };
+        
+        let mut env = IndexMap::new();
+        env.insert("MY_VAR".to_string(), "env_value".to_string());
+        // ANOTHER_VAR is not in environment
+        manifest.environments.insert("global".to_string(), env);
+        
+        let mut result = DoctorResult {
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            suggestions: Vec::new(),
+        };
+        
+        // Provide both values via CLI
+        let cli_inputs = vec![
+            ("MY_VAR".to_string(), "cli_override".to_string()),
+            ("ANOTHER_VAR".to_string(), "cli_provided".to_string()),
+        ];
+        
+        validate_inputs_against_manifest(
+            &runbook,
+            &manifest,
+            None,
+            &mut result,
+            Path::new("test.tx"),
+            &cli_inputs,
+        );
+        
+        // Should have no errors since CLI provides all values
+        assert_eq!(result.errors.len(), 0, "CLI inputs should provide all required values");
+        
+        // Should mention CLI inputs provided
+        assert!(result.suggestions.iter().any(|s| 
+            s.message.contains("2 CLI inputs provided")),
+            "Should mention number of CLI inputs"
         );
     }
 }
@@ -585,7 +653,7 @@ mod tests {
 
 /// Analyze a single runbook file
 fn analyze_runbook_file(path: &Path) -> Result<(), String> {
-    analyze_runbook_file_with_context(path, None, None)
+    analyze_runbook_file_with_context(path, None, None, &[])
 }
 
 /// Analyze a single runbook file with manifest context
@@ -593,6 +661,7 @@ fn analyze_runbook_file_with_context(
     path: &Path,
     manifest: Option<&WorkspaceManifest>,
     environment: Option<&String>,
+    cli_inputs: &[(String, String)],
 ) -> Result<(), String> {
     // Read the runbook file
     let content =
@@ -605,7 +674,7 @@ fn analyze_runbook_file_with_context(
     println!();
 
     // Run the analysis
-    let result = analyze_runbook_with_context(path, &content, manifest, environment);
+    let result = analyze_runbook_with_context(path, &content, manifest, environment, cli_inputs);
 
     // Display the results
     display_results(&result);
@@ -624,6 +693,7 @@ pub fn analyze_runbook_with_context(
     content: &str,
     manifest: Option<&WorkspaceManifest>,
     environment: Option<&String>,
+    cli_inputs: &[(String, String)],
 ) -> DoctorResult {
     let mut result =
         DoctorResult { errors: Vec::new(), warnings: Vec::new(), suggestions: Vec::new() };
@@ -642,6 +712,7 @@ pub fn analyze_runbook_with_context(
                     environment,
                     &mut result,
                     file_path,
+                    cli_inputs,
                 );
             }
         }
@@ -706,6 +777,7 @@ fn validate_inputs_against_manifest(
     environment: Option<&String>,
     result: &mut DoctorResult,
     file_path: &Path,
+    cli_inputs: &[(String, String)],
 ) {
     // Determine which environment to use
     let env_name = if let Some(env) = environment {
@@ -755,6 +827,11 @@ fn validate_inputs_against_manifest(
         }
     }
 
+    // Apply CLI input overrides
+    for (key, value) in cli_inputs {
+        effective_inputs.insert(key.clone(), value.clone());
+    }
+
     // Add info about environment inheritance
     if env_name.is_some() && env_name != Some("global") && manifest.environments.contains_key("global") {
         result.suggestions.push(DoctorSuggestion {
@@ -762,6 +839,18 @@ fn validate_inputs_against_manifest(
                 "Environment '{}' inherits from 'global'. Values in '{}' override those in 'global'.",
                 env_name.unwrap(),
                 env_name.unwrap()
+            ),
+            example: None,
+        });
+    }
+    
+    // Add info about CLI inputs if any were provided
+    if !cli_inputs.is_empty() {
+        result.suggestions.push(DoctorSuggestion {
+            message: format!(
+                "CLI inputs take precedence over environment values. {} CLI input{} provided.",
+                cli_inputs.len(),
+                if cli_inputs.len() > 1 { "s" } else { "" }
             ),
             example: None,
         });
