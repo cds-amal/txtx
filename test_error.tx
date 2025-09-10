@@ -1,0 +1,19 @@
+addon "evm" {
+    network_id = 1
+}
+
+action "send" "evm::send_eth" {
+    value = "1000"
+}
+
+output "tx" {
+    value = action.send.tx_hash
+}
+
+output "bad" {
+    value = action.send.from
+}
+
+variable "test" {
+    value = input.missing_input
+}

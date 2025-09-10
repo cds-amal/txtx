@@ -163,6 +163,21 @@ pub struct DoctorCommand {
     /// Input variable overrides (format: name=value)
     #[arg(long = "input", short = 'i', value_parser = parse_key_val)]
     pub inputs: Vec<(String, String)>,
+    /// Output format (auto, pretty, quickfix, json)
+    #[arg(long = "format", short = 'f', default_value = "auto", value_enum)]
+    pub format: DoctorOutputFormat,
+}
+
+#[derive(clap::ValueEnum, PartialEq, Clone, Debug)]
+pub enum DoctorOutputFormat {
+    /// Auto-detect based on output context
+    Auto,
+    /// Human-readable output with colors and context
+    Pretty,
+    /// Single-line format for editor integration
+    Quickfix,
+    /// Machine-readable JSON format
+    Json,
 }
 
 #[derive(Parser, PartialEq, Clone, Debug)]
@@ -371,9 +386,9 @@ async fn handle_command(
                 cmd.manifest_path.clone(), 
                 cmd.runbook.clone(), 
                 cmd.environment.clone(),
-                cmd.inputs.clone()
-            )
-                .await?;
+                cmd.inputs.clone(),
+                cmd.format.clone()
+            )?;
         }
     }
     Ok(())

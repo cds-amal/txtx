@@ -6,6 +6,7 @@ use txtx_core::manifest::WorkspaceManifest;
 use txtx_parser::{parse, Runbook, Expression};
 
 pub(crate) mod parser_validator;
+use parser_validator::LocatedInputRef;
 
 #[derive(Debug)]
 pub struct DoctorResult {
@@ -17,9 +18,9 @@ pub struct DoctorResult {
 #[derive(Debug)]
 pub struct DoctorError {
     pub message: String,
-    pub _file: String,
-    pub _line: Option<usize>,
-    pub _column: Option<usize>,
+    pub file: String,
+    pub line: Option<usize>,
+    pub column: Option<usize>,
     pub context: Option<String>,
     pub documentation_link: Option<String>,
 }
@@ -27,9 +28,9 @@ pub struct DoctorError {
 #[derive(Debug)]
 pub struct DoctorWarning {
     pub message: String,
-    pub _file: String,
-    pub _line: Option<usize>,
-    pub _column: Option<usize>,
+    pub file: String,
+    pub line: Option<usize>,
+    pub column: Option<usize>,
     pub suggestion: Option<String>,
 }
 
@@ -40,20 +41,59 @@ pub struct DoctorSuggestion {
 }
 
 /// Main entry point for the doctor command
-pub async fn run_doctor(
+pub fn run_doctor(
     manifest_path: Option<String>,
     runbook_name: Option<String>,
     environment: Option<String>,
     cli_inputs: Vec<(String, String)>,
+    format: crate::cli::DoctorOutputFormat,
 ) -> Result<(), String> {
+    // Debug message only in pretty format
+    if matches!(format, crate::cli::DoctorOutputFormat::Pretty) {
+        // Suppress diagnostic output for non-pretty formats
+        if matches!(format, crate::cli::DoctorOutputFormat::Pretty) {
+            eprintln!("Doctor command running with runbook: {:?}", runbook_name);
+        }
+    }
     let manifest_path = manifest_path.unwrap_or_else(|| "./txtx.yml".to_string());
+    
+    // Auto-detect format if needed
+    let format = match format {
+        crate::cli::DoctorOutputFormat::Auto => {
+            // Check environment variable first
+            if let Ok(env_format) = std::env::var("TXTX_DOCTOR_FORMAT") {
+                match env_format.to_lowercase().as_str() {
+                    "quickfix" => crate::cli::DoctorOutputFormat::Quickfix,
+                    "json" => crate::cli::DoctorOutputFormat::Json,
+                    "pretty" => crate::cli::DoctorOutputFormat::Pretty,
+                    _ => {
+                        // Fall back to auto-detection
+                        if !atty::is(atty::Stream::Stdout) || std::env::var("CI").is_ok() {
+                            crate::cli::DoctorOutputFormat::Quickfix
+                        } else {
+                            crate::cli::DoctorOutputFormat::Pretty
+                        }
+                    }
+                }
+            } else {
+                // Check if output is being piped or we're in CI
+                if !atty::is(atty::Stream::Stdout) || std::env::var("CI").is_ok() {
+                    crate::cli::DoctorOutputFormat::Quickfix
+                } else {
+                    crate::cli::DoctorOutputFormat::Pretty
+                }
+            }
+        }
+        other => other,
+    };
 
     // If a specific runbook is specified, try to find it
     if let Some(runbook_name) = runbook_name {
         // First try as a direct file path
         let path = PathBuf::from(&runbook_name);
         if path.exists() && path.extension().map_or(false, |ext| ext == "tx") {
-            analyze_runbook_file(&path)?;
+            // When analyzing a direct file without manifest context
+            analyze_runbook_file_with_context(&path, None, environment.as_ref(), &cli_inputs, &format)?;
         } else {
             // Try to load from manifest
             let manifest = match crate::cli::runbooks::load_workspace_manifest_from_manifest_path(
@@ -86,6 +126,7 @@ pub async fn run_doctor(
                                 Some(&manifest),
                                 environment.as_ref(),
                                 &cli_inputs,
+                                &format,
                             )?;
                             found = true;
                         } else {
@@ -100,6 +141,7 @@ pub async fn run_doctor(
                             Some(&manifest),
                             environment.as_ref(),
                             &cli_inputs,
+                            &format,
                         )?;
                         found = true;
                     } else {
@@ -111,6 +153,7 @@ pub async fn run_doctor(
                                 Some(&manifest),
                                 environment.as_ref(),
                                 &cli_inputs,
+                                &format,
                             )?;
                             found = true;
                         }
@@ -132,11 +175,15 @@ pub async fn run_doctor(
             crate::cli::runbooks::load_workspace_manifest_from_manifest_path(&manifest_path)
         {
             if manifest.runbooks.is_empty() {
-                println!("No runbooks found in manifest.");
+                if matches!(format, crate::cli::DoctorOutputFormat::Pretty) {
+                    println!("No runbooks found in manifest.");
+                }
             } else {
                 let mut any_errors = false;
                 for metadata in &manifest.runbooks {
-                    println!("Checking runbook '{}'...", metadata.name);
+                    if matches!(format, crate::cli::DoctorOutputFormat::Pretty) {
+                        println!("Checking runbook '{}'...", metadata.name);
+                    }
 
                     let base_path = std::path::Path::new(&manifest_path)
                         .parent()
@@ -158,6 +205,7 @@ pub async fn run_doctor(
                             Some(&manifest),
                             environment.as_ref(),
                             &cli_inputs,
+                            &format,
                         )
                         .is_err()
                         {
@@ -170,7 +218,9 @@ pub async fn run_doctor(
                             file_to_check.display()
                         );
                     }
-                    println!();
+                    if matches!(format, crate::cli::DoctorOutputFormat::Pretty) {
+                        println!();
+                    }
                 }
 
                 if any_errors {
@@ -188,7 +238,7 @@ pub async fn run_doctor(
             for file in possible_files {
                 let path = current_dir.join(file);
                 if path.exists() {
-                    analyze_runbook_file(&path)?;
+                    analyze_runbook_file(&path, &format)?;
                     found = true;
                     break;
                 }
@@ -203,7 +253,7 @@ pub async fn run_doctor(
                     if let Ok(entry) = entry {
                         let path = entry.path();
                         if path.extension().map_or(false, |ext| ext == "tx") {
-                            analyze_runbook_file(&path)?;
+                    analyze_runbook_file(&path, &format)?;
                             found = true;
                             break;
         }
@@ -222,7 +272,7 @@ mod tests {
             warnings: Vec::new(),
             suggestions: Vec::new(),
         };
-        parser_validator::validate_with_visitor(&runbook, &mut result, "test.tx");
+        let _ = parser_validator::validate_with_visitor(&runbook, &mut result, "test.tx");
         result
     }
 
@@ -652,8 +702,8 @@ mod tests {
 }
 
 /// Analyze a single runbook file
-fn analyze_runbook_file(path: &Path) -> Result<(), String> {
-    analyze_runbook_file_with_context(path, None, None, &[])
+fn analyze_runbook_file(path: &Path, format: &crate::cli::DoctorOutputFormat) -> Result<(), String> {
+    analyze_runbook_file_with_context(path, None, None, &[], format)
 }
 
 /// Analyze a single runbook file with manifest context
@@ -662,22 +712,27 @@ fn analyze_runbook_file_with_context(
     manifest: Option<&WorkspaceManifest>,
     environment: Option<&String>,
     cli_inputs: &[(String, String)],
+    format: &crate::cli::DoctorOutputFormat,
 ) -> Result<(), String> {
     // Read the runbook file
     let content =
         std::fs::read_to_string(path).map_err(|e| format!("Failed to read runbook file: {}", e))?;
 
-    println!("Analyzing runbook: {}", path.display());
-    if let Some(env) = environment {
-        println!("Using environment: {}", env);
+    // Only print diagnostic messages for pretty format
+    let is_pretty_format = matches!(format, crate::cli::DoctorOutputFormat::Pretty);
+    if is_pretty_format {
+        println!("Analyzing runbook: {}", path.display());
+        if let Some(env) = environment {
+            println!("Using environment: {}", env);
+        }
+        println!();
     }
-    println!();
 
     // Run the analysis
     let result = analyze_runbook_with_context(path, &content, manifest, environment, cli_inputs);
 
     // Display the results
-    display_results(&result);
+    display_results(&result, format);
 
     // Return error if there were any errors found
     if !result.errors.is_empty() {
@@ -701,13 +756,14 @@ pub fn analyze_runbook_with_context(
     // Parse the runbook
     match parse(content) {
         Ok(runbook) => {
-            // Use visitor pattern for validation
-            parser_validator::validate_with_visitor(&runbook, &mut result, &file_path.to_string_lossy());
+            // Use visitor pattern for validation and collect input refs
+            let input_refs = parser_validator::validate_with_visitor(&runbook, &mut result, &file_path.to_string_lossy());
 
-            // If we have manifest context, validate inputs
+            // If we have manifest context, validate inputs with location info
             if let Some(manifest) = manifest {
-                validate_inputs_against_manifest(
-                    &runbook,
+                validate_inputs_against_manifest_with_locations(
+                    &input_refs,
+                    content,
                     manifest,
                     environment,
                     &mut result,
@@ -719,9 +775,9 @@ pub fn analyze_runbook_with_context(
         Err(e) => {
             result.errors.push(DoctorError {
                 message: format!("Failed to parse runbook: {}", e),
-                _file: file_path.to_string_lossy().to_string(),
-                _line: None,
-                _column: None,
+                file: file_path.to_string_lossy().to_string(),
+                line: None,
+                column: None,
                 context: None,
                 documentation_link: None,
             });
@@ -770,7 +826,123 @@ fn get_action_doc_link(action_type: &str) -> String {
     }
 }
 
-/// Validate input references against manifest environment
+/// Helper function to find the line and column of an input reference in the source
+fn find_input_location(content: &str, input_name: &str) -> Option<(usize, usize)> {
+    for (line_idx, line) in content.lines().enumerate() {
+        if let Some(col_idx) = line.find(input_name) {
+            return Some((line_idx + 1, col_idx + 1));
+        }
+    }
+    None
+}
+
+/// Validate input references against manifest environment with location information
+fn validate_inputs_against_manifest_with_locations(
+    input_refs: &[parser_validator::LocatedInputRef],
+    content: &str,
+    manifest: &WorkspaceManifest,
+    environment: Option<&String>,
+    result: &mut DoctorResult,
+    file_path: &Path,
+    cli_inputs: &[(String, String)],
+) {
+    // Determine which environment to use
+    let env_name = if let Some(env) = environment {
+        // Use the explicitly specified environment
+        Some(env.as_str())
+    } else if manifest.environments.contains_key("global") {
+        // Default to global if no environment specified
+        Some("global")
+    } else {
+        // Fall back to first available environment
+        manifest.environments.keys().next().map(|s| s.as_str())
+    };
+
+    // Build the effective environment by merging global with specific environment
+    let mut effective_inputs = HashMap::new();
+    
+    // First, add all inputs from global environment
+    if let Some(global_inputs) = manifest.environments.get("global") {
+        for (key, value) in global_inputs {
+            effective_inputs.insert(key.clone(), value.clone());
+        }
+    }
+    
+    // Then, overlay the specific environment (if different from global)
+    if let Some(env_name) = env_name {
+        if env_name != "global" {
+            if let Some(env_inputs) = manifest.environments.get(env_name) {
+                for (key, value) in env_inputs {
+                    effective_inputs.insert(key.clone(), value.clone());
+                }
+            }
+        }
+    }
+
+    // Apply CLI input overrides
+    for (key, value) in cli_inputs {
+        effective_inputs.insert(key.clone(), value.clone());
+    }
+
+    // Check each input reference
+    for input_ref in input_refs {
+        let input_name = if input_ref.name.starts_with("input.") {
+            &input_ref.name[6..]
+        } else {
+            &input_ref.name
+        };
+        
+        if !effective_inputs.contains_key(input_name) {
+            // Find the actual location in the source file
+            let (line, column) = if let Some((l, c)) = find_input_location(content, &input_ref.name) {
+                (Some(l), Some(c))
+            } else {
+                (None, None)
+            };
+            
+            let mut context_msg = format!(
+                "Add '{}' to your txtx.yml file",
+                input_name
+            );
+            
+            if env_name.is_some() && env_name != Some("global") {
+                context_msg.push_str(" (consider adding to 'global' if used across environments)");
+            }
+            
+            result.errors.push(DoctorError {
+                message: format!(
+                    "Input '{}' is not defined in environment '{}' (including inherited values)",
+                    input_ref.name,
+                    env_name.unwrap_or("default")
+                ),
+                file: file_path.to_string_lossy().to_string(),
+                line,
+                column,
+                context: Some(context_msg),
+                documentation_link: Some(
+                    "https://docs.txtx.sh/concepts/manifest#environments".to_string(),
+                ),
+            });
+
+            // Add a suggestion with example
+            result.suggestions.push(DoctorSuggestion {
+                message: "Add the missing input to your environment".to_string(),
+                example: Some(format!(
+                    "environments:\n  {}:\n    {}: \"<value>\"{}",
+                    env_name.unwrap_or("default"),
+                    input_name,
+                    if env_name != Some("global") { 
+                        format!("\n\n# Or add to global for all environments:\nenvironments:\n  global:\n    {}: \"<value>\"", input_name) 
+                    } else { 
+                        "".to_string() 
+                    }
+                )),
+            });
+        }
+    }
+}
+
+/// Keep the old function for backward compatibility
 fn validate_inputs_against_manifest(
     runbook: &Runbook,
     manifest: &WorkspaceManifest,
@@ -812,9 +984,9 @@ fn validate_inputs_against_manifest(
                 // Environment specified but not found
                 result.errors.push(DoctorError {
                     message: format!("Environment '{}' is not defined in the manifest", env_name),
-                    _file: file_path.to_string_lossy().to_string(),
-                    _line: None,
-                    _column: None,
+                    file: file_path.to_string_lossy().to_string(),
+                    line: None,
+                    column: None,
                     context: Some(format!(
                         "Available environments: {}",
                         manifest.environments.keys().cloned().collect::<Vec<_>>().join(", ")
@@ -883,9 +1055,9 @@ fn validate_inputs_against_manifest(
                         input_ref,
                         env_name.unwrap_or("default")
                     ),
-                    _file: file_path.to_string_lossy().to_string(),
-                    _line: None,
-                    _column: None,
+                    file: file_path.to_string_lossy().to_string(),
+                    line: None,
+                    column: None,
                     context: Some(context_msg),
                     documentation_link: Some(
                         "https://docs.txtx.sh/concepts/manifest#environments".to_string(),
@@ -908,9 +1080,9 @@ fn validate_inputs_against_manifest(
             result.warnings.push(DoctorWarning {
                 message: "Runbook uses inputs but no environment is defined in the manifest"
                     .to_string(),
-                _file: file_path.to_string_lossy().to_string(),
-                _line: None,
-                _column: None,
+                file: file_path.to_string_lossy().to_string(),
+                line: None,
+                column: None,
                 suggestion: Some("Add an 'environments' section to your txtx.yml file".to_string()),
             });
             break; // Only warn once
@@ -936,9 +1108,9 @@ fn validate_inputs_against_manifest(
                         input_name,
                         source
                     ),
-                    _file: file_path.to_string_lossy().to_string(),
-                    _line: None,
-                    _column: None,
+                    file: file_path.to_string_lossy().to_string(),
+                    line: None,
+                    column: None,
                     suggestion: Some(format!(
                         "Consider removing '{}' if it's not needed",
                         input_name
@@ -1019,7 +1191,91 @@ fn collect_input_refs_from_expression(
 }
 
 /// Format and display the doctor results
-pub fn display_results(result: &DoctorResult) {
+pub fn display_results(result: &DoctorResult, format: &crate::cli::DoctorOutputFormat) {
+    match format {
+        crate::cli::DoctorOutputFormat::Quickfix => display_results_quickfix(result),
+        crate::cli::DoctorOutputFormat::Json => display_results_json(result),
+        crate::cli::DoctorOutputFormat::Pretty => display_results_pretty(result),
+        crate::cli::DoctorOutputFormat::Auto => display_results_pretty(result), // Should not reach here after auto-detection
+    }
+}
+
+/// Display results in quickfix format (single line per issue)
+fn display_results_quickfix(result: &DoctorResult) {
+    // Errors in quickfix format
+    for error in &result.errors {
+        let location = if let (Some(line), Some(column)) = (error.line, error.column) {
+            format!("{}:{}:{}: ", error.file, line + 1, column + 1)
+        } else {
+            // When we don't have specific location, default to line 1 for navigation
+            format!("{}:1: ", error.file)
+        };
+        
+        let mut message = format!("error: {}", error.message);
+        if let Some(link) = &error.documentation_link {
+            message.push_str(&format!(" (see: {})", link));
+        }
+        
+        println!("{}{}", location, message);
+    }
+
+    // Warnings in quickfix format
+    for warning in &result.warnings {
+        let location = if let (Some(line), Some(column)) = (warning.line, warning.column) {
+            format!("{}:{}:{}: ", warning.file, line + 1, column + 1)
+        } else {
+            // When we don't have specific location, default to line 1 for navigation
+            format!("{}:1: ", warning.file)
+        };
+        
+        let mut message = format!("warning: {}", warning.message);
+        if let Some(suggestion) = &warning.suggestion {
+            message.push_str(&format!(" (hint: {})", suggestion));
+        }
+        
+        println!("{}{}", location, message);
+    }
+}
+
+/// Display results in JSON format
+fn display_results_json(result: &DoctorResult) {
+    use serde_json::json;
+    
+    let output = json!({
+        "errors": result.errors.iter().map(|e| {
+            json!({
+                "file": e.file,
+                "line": e.line,
+                "column": e.column,
+                "level": "error",
+                "message": e.message,
+                "context": e.context,
+                "documentation": e.documentation_link,
+            })
+        }).collect::<Vec<_>>(),
+        "warnings": result.warnings.iter().map(|w| {
+            json!({
+                "file": w.file,
+                "line": w.line,
+                "column": w.column,
+                "level": "warning",
+                "message": w.message,
+                "suggestion": w.suggestion,
+            })
+        }).collect::<Vec<_>>(),
+        "suggestions": result.suggestions.iter().map(|s| {
+            json!({
+                "message": s.message,
+                "example": s.example,
+            })
+        }).collect::<Vec<_>>(),
+    });
+    
+    println!("{}", serde_json::to_string_pretty(&output).unwrap_or_else(|_| "{}".to_string()));
+}
+
+/// Display results in pretty format (current implementation)
+fn display_results_pretty(result: &DoctorResult) {
     use ansi_term::Colour::{Blue, Red, Yellow};
 
     let total_issues = result.errors.len() + result.warnings.len();
@@ -1034,7 +1290,19 @@ pub fn display_results(result: &DoctorResult) {
 
     // Display errors
     for (i, error) in result.errors.iter().enumerate() {
-        println!("{} {}", Red.bold().paint(format!("{}.", i + 1)), Red.paint(&error.message));
+        // Format: file:line:column: error message
+        // This format is recognized by most IDEs and can be clicked
+        let location = if let (Some(line), Some(column)) = (error.line, error.column) {
+            format!("{}:{}:{}: ", error.file, line + 1, column + 1)
+        } else {
+            format!("{}: ", error.file)
+        };
+        
+        println!("{}{} {}", 
+            location,
+            Red.bold().paint(format!("error[{}]:", i + 1)), 
+            Red.paint(&error.message)
+        );
 
         if let Some(context) = &error.context {
             println!("   {}", context);
@@ -1049,7 +1317,19 @@ pub fn display_results(result: &DoctorResult) {
 
     // Display warnings
     for warning in &result.warnings {
-        println!("{} {}", Yellow.paint("Warning:"), warning.message);
+        // Format: file:line:column: warning message
+        let location = if let (Some(line), Some(column)) = (warning.line, warning.column) {
+            format!("{}:{}:{}: ", warning.file, line + 1, column + 1)
+        } else {
+            format!("{}: ", warning.file)
+        };
+        
+        println!("{}{} {}", 
+            location,
+            Yellow.paint("warning:"), 
+            warning.message
+        );
+        
         if let Some(suggestion) = &warning.suggestion {
             println!("   {} {}", Blue.paint("Suggestion:"), suggestion);
         }

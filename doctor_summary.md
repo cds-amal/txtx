@@ -52,6 +52,12 @@ Suggestions:
    - 4 integration tests running the full CLI
    - Tests use real fixtures from `doctor_demo`
    - All tests passing
+   
+### 9. **IDE-Friendly Error Output** ✅
+   - Errors formatted as `file:line:column: error[n]: message`
+   - Clickable in VSCode, IntelliJ, and other IDEs
+   - Works with Vim quickfix (`:cexpr system('txtx doctor')`)
+   - Compatible with Emacs compilation-mode
 
 ## Architecture Highlights
 

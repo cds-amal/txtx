@@ -10,6 +10,14 @@ use txtx_core::kit::types::commands::CommandSpecification;
 
 use super::{DoctorResult, DoctorError, DoctorSuggestion, get_addon_specifications, get_action_doc_link};
 
+/// Represents an input reference with its location in the source file
+#[derive(Debug, Clone)]
+pub struct LocatedInputRef {
+    pub name: String,
+    pub line: usize,
+    pub column: usize,
+}
+
 /// A visitor that validates runbooks by traversing the AST
 pub struct ValidationVisitor<'a> {
     /// Results collector
@@ -22,6 +30,11 @@ pub struct ValidationVisitor<'a> {
     action_specs: HashMap<String, CommandSpecification>,
     /// Addon specifications
     addon_specs: HashMap<String, Vec<(String, CommandSpecification)>>,
+    /// Collected input references with their locations
+    pub input_refs: Vec<LocatedInputRef>,
+    /// Current context for tracking approximate location
+    current_block_type: String,
+    current_block_name: String,
 }
 
 impl<'a> ValidationVisitor<'a> {
@@ -32,6 +45,9 @@ impl<'a> ValidationVisitor<'a> {
             action_types: HashMap::new(),
             action_specs: HashMap::new(),
             addon_specs: get_addon_specifications(),
+            input_refs: Vec::new(),
+            current_block_type: String::new(),
+            current_block_name: String::new(),
         }
     }
 
@@ -60,9 +76,9 @@ impl<'a> ValidationVisitor<'a> {
                                         "Field '{}' does not exist on action '{}' ({}). The send_eth action only outputs: {}",
                                         requested_field, action_name, action_type, output_names.join(", ")
                                     ),
-                                    _file: self.file_path.clone(),
-                                    _line: None,
-                                    _column: None,
+                                    file: self.file_path.clone(),
+                                    line: None,
+                                    column: None,
                                     context: Some(format!(
                                         "The 'from' and 'to' fields are inputs to send_eth, not outputs. Transaction details like sender/recipient addresses are not returned by this action."
                                     )),
@@ -79,9 +95,9 @@ impl<'a> ValidationVisitor<'a> {
                                         "Field '{}' does not exist on action '{}' ({}). Available outputs: {}",
                                         requested_field, action_name, action_type, output_names.join(", ")
                                     ),
-                                    _file: self.file_path.clone(),
-                                    _line: None,
-                                    _column: None,
+                                    file: self.file_path.clone(),
+                                    line: None,
+                                    column: None,
                                     context: None,
                                     documentation_link: Some(get_action_doc_link(action_type)),
                                 });
@@ -95,9 +111,9 @@ impl<'a> ValidationVisitor<'a> {
                                     "Cannot access property '{}' on field '{}' - it is not an object",
                                     field_path[1], requested_field
                                 ),
-                                _file: self.file_path.clone(),
-                                _line: None,
-                                _column: None,
+                                file: self.file_path.clone(),
+                                line: None,
+                                column: None,
                                 context: Some(format!(
                                     "The field '{}' is a simple value, not an object with properties",
                                     requested_field
@@ -110,9 +126,9 @@ impl<'a> ValidationVisitor<'a> {
             } else {
                 self.result.errors.push(DoctorError {
                     message: format!("Reference to undefined action '{}'", action_name),
-                    _file: self.file_path.clone(),
-                    _line: None,
-                    _column: None,
+                    file: self.file_path.clone(),
+                    line: None,
+                    column: None,
                     context: Some("Make sure the action is defined before using it in outputs".to_string()),
                     documentation_link: None,
                 });
@@ -144,6 +160,10 @@ impl<'a> RunbookVisitor for ValidationVisitor<'a> {
     }
     
     fn visit_action(&mut self, action: &ActionBlock) {
+        // Update context
+        self.current_block_type = "action".to_string();
+        self.current_block_name = action.name.clone();
+        
         // Record action type
         self.action_types.insert(action.name.clone(), action.action_type.clone());
         
@@ -166,6 +186,10 @@ impl<'a> RunbookVisitor for ValidationVisitor<'a> {
     }
     
     fn visit_output(&mut self, output: &OutputBlock) {
+        // Update context
+        self.current_block_type = "output".to_string();
+        self.current_block_name = output.name.clone();
+        
         // Visit all attributes (including value)
         self.visit_attributes(&output.attributes);
     }
@@ -173,6 +197,17 @@ impl<'a> RunbookVisitor for ValidationVisitor<'a> {
     fn visit_expression(&mut self, expr: &Expression) {
         match expr {
             Expression::Reference(parts) => {
+                // Check if it's an input reference
+                if parts.len() >= 2 && parts[0] == "input" {
+                    // For now, just collect the name. We'll find the location later
+                    // using text search when we know which inputs are undefined
+                    self.input_refs.push(LocatedInputRef {
+                        name: parts.join("."),
+                        line: 0, // Will be filled in later
+                        column: 0,
+                    });
+                }
+                
                 self.validate_action_reference(parts);
             }
             Expression::Array(items) => {
@@ -200,7 +235,8 @@ pub fn validate_with_visitor(
     runbook: &Runbook,
     result: &mut DoctorResult,
     file_path: &str,
-) {
+) -> Vec<LocatedInputRef> {
     let mut visitor = ValidationVisitor::new(result, file_path);
     visitor.visit_runbook(runbook);
+    visitor.input_refs
 }

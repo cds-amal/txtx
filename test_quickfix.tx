@@ -1,0 +1,25 @@
+// Test file with intentional errors for quickfix testing
+addon "evm" {
+    network_id = 1
+}
+
+action "send" "evm::send_eth" {
+    from = "0x123"
+    to = "0x456" 
+    value = "1000"
+}
+
+// This will cause an error - 'from' is not a valid output field
+output "bad" {
+    value = action.send.from
+}
+
+// This will cause another error - undefined action
+output "missing" {
+    value = action.undefined.result
+}
+
+// This will cause an error - undefined input
+output "no_input" {
+    value = input.MISSING_VAR
+}
