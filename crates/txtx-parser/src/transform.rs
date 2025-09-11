@@ -30,6 +30,21 @@ pub trait RunbookTransform {
         for var in &mut runbook.variables {
             self.transform_variable(var);
         }
+
+        // Transform flows
+        for flow in &mut runbook.flows {
+            self.transform_flow(flow);
+        }
+
+        // Transform modules
+        for module in &mut runbook.modules {
+            self.transform_module(module);
+        }
+
+        // Transform runbook blocks
+        for runbook_block in &mut runbook.runbook_blocks {
+            self.transform_runbook_block(runbook_block);
+        }
     }
 
     fn transform_addon(&mut self, addon: &mut AddonBlock) {
@@ -75,6 +90,33 @@ pub trait RunbookTransform {
             new_attrs.insert(key, new_expr);
         }
         var.attributes = new_attrs;
+    }
+
+    fn transform_flow(&mut self, flow: &mut FlowBlock) {
+        let mut new_attrs = HashMap::new();
+        for (key, expr) in flow.attributes.drain() {
+            let new_expr = self.transform_expression(expr);
+            new_attrs.insert(key, new_expr);
+        }
+        flow.attributes = new_attrs;
+    }
+
+    fn transform_module(&mut self, module: &mut ModuleBlock) {
+        let mut new_attrs = HashMap::new();
+        for (key, expr) in module.attributes.drain() {
+            let new_expr = self.transform_expression(expr);
+            new_attrs.insert(key, new_expr);
+        }
+        module.attributes = new_attrs;
+    }
+
+    fn transform_runbook_block(&mut self, runbook_block: &mut RunbookBlock) {
+        let mut new_attrs = HashMap::new();
+        for (key, expr) in runbook_block.attributes.drain() {
+            let new_expr = self.transform_expression(expr);
+            new_attrs.insert(key, new_expr);
+        }
+        runbook_block.attributes = new_attrs;
     }
 
     fn transform_expression(&mut self, expr: Expression) -> Expression {

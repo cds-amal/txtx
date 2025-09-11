@@ -17,6 +17,18 @@ impl RunbookRenderer {
     pub fn render(&mut self, runbook: &Runbook) -> String {
         let mut out = String::new();
 
+        // Render modules first (metadata)
+        for module in &runbook.modules {
+            self.render_module(&mut out, module);
+            out.push('\n');
+        }
+
+        // Render flows
+        for flow in &runbook.flows {
+            self.render_flow(&mut out, flow);
+            out.push('\n');
+        }
+
         // Render addons
         for addon in &runbook.addons {
             self.render_addon(&mut out, addon);
@@ -44,6 +56,12 @@ impl RunbookRenderer {
         // Render variables
         for variable in &runbook.variables {
             self.render_variable(&mut out, variable);
+            out.push('\n');
+        }
+
+        // Render runbook blocks (embedded runbooks) 
+        for runbook_block in &runbook.runbook_blocks {
+            self.render_runbook_block(&mut out, runbook_block);
             out.push('\n');
         }
 
@@ -92,6 +110,30 @@ impl RunbookRenderer {
         write!(out, "{}variable \"{}\" {{\n", self.indent(), variable.name).unwrap();
         self.indent += 1;
         self.render_attributes(out, &variable.attributes);
+        self.indent -= 1;
+        write!(out, "{}}}\n", self.indent()).unwrap();
+    }
+
+    fn render_flow(&mut self, out: &mut String, flow: &FlowBlock) {
+        write!(out, "{}flow \"{}\" {{\n", self.indent(), flow.name).unwrap();
+        self.indent += 1;
+        self.render_attributes(out, &flow.attributes);
+        self.indent -= 1;
+        write!(out, "{}}}\n", self.indent()).unwrap();
+    }
+
+    fn render_module(&mut self, out: &mut String, module: &ModuleBlock) {
+        write!(out, "{}module \"{}\" {{\n", self.indent(), module.name).unwrap();
+        self.indent += 1;
+        self.render_attributes(out, &module.attributes);
+        self.indent -= 1;
+        write!(out, "{}}}\n", self.indent()).unwrap();
+    }
+
+    fn render_runbook_block(&mut self, out: &mut String, runbook_block: &RunbookBlock) {
+        write!(out, "{}runbook \"{}\" {{\n", self.indent(), runbook_block.name).unwrap();
+        self.indent += 1;
+        self.render_attributes(out, &runbook_block.attributes);
         self.indent -= 1;
         write!(out, "{}}}\n", self.indent()).unwrap();
     }

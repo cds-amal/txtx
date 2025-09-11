@@ -10,6 +10,7 @@ pub mod transform;
 pub mod visitor;
 
 pub use ast::*;
+use ast::{FlowBlock, ModuleBlock, RunbookBlock};
 pub use builder::RunbookBuilder;
 pub use renderer::RunbookRenderer;
 pub use transform::RunbookTransform;
@@ -79,6 +80,21 @@ fn convert_node(node: &Node, source: &str) -> Result<Runbook, ParseError> {
                     runbook.variables.push(var);
                 }
             }
+            "flow_block" => {
+                if let Ok(flow) = convert_flow(&child, source) {
+                    runbook.flows.push(flow);
+                }
+            }
+            "module_block" => {
+                if let Ok(module) = convert_module(&child, source) {
+                    runbook.modules.push(module);
+                }
+            }
+            "runbook_block" => {
+                if let Ok(runbook_block) = convert_runbook_block(&child, source) {
+                    runbook.runbook_blocks.push(runbook_block);
+                }
+            }
             _ => {} // Ignore other nodes like comments
         }
     }
@@ -121,6 +137,27 @@ fn convert_variable(node: &Node, source: &str) -> Result<VariableDeclaration, Pa
     let attributes = convert_attributes(node, source)?;
 
     Ok(VariableDeclaration { name, attributes })
+}
+
+fn convert_flow(node: &Node, source: &str) -> Result<FlowBlock, ParseError> {
+    let name = get_string_field(node, "name", source)?;
+    let attributes = convert_attributes(node, source)?;
+
+    Ok(FlowBlock { name, attributes })
+}
+
+fn convert_module(node: &Node, source: &str) -> Result<ModuleBlock, ParseError> {
+    let name = get_string_field(node, "name", source)?;
+    let attributes = convert_attributes(node, source)?;
+
+    Ok(ModuleBlock { name, attributes })
+}
+
+fn convert_runbook_block(node: &Node, source: &str) -> Result<RunbookBlock, ParseError> {
+    let name = get_string_field(node, "name", source)?;
+    let attributes = convert_attributes(node, source)?;
+
+    Ok(RunbookBlock { name, attributes })
 }
 
 fn convert_attributes(

@@ -84,6 +84,63 @@ output "tx_hash" {
         value: (string)))))
 
 ================================================================================
+Flow, Module, and Runbook Blocks
+================================================================================
+
+flow "mainnet" {
+    description = "Production environment"
+    chain_id = 1
+    rpc_url = "https://mainnet.infura.io"
+}
+
+module "metadata" {
+    name = "Test Runbook"
+    version = "1.0.0"
+}
+
+runbook "embedded" {
+    location = "./embedded.tx"
+    inputs = { key: "value" }
+}
+
+--------------------------------------------------------------------------------
+
+(runbook
+  (flow_block
+    name: (string)
+    config: (block
+      (attribute
+        key: (identifier)
+        value: (string))
+      (attribute
+        key: (identifier)
+        value: (number))
+      (attribute
+        key: (identifier)
+        value: (string))))
+  (module_block
+    name: (string)
+    config: (block
+      (attribute
+        key: (identifier)
+        value: (string))
+      (attribute
+        key: (identifier)
+        value: (string))))
+  (runbook_block
+    name: (string)
+    config: (block
+      (attribute
+        key: (identifier)
+        value: (string))
+      (attribute
+        key: (identifier)
+        value: (object
+          (object_field
+            key: (identifier)
+            value: (string)))))))
+
+================================================================================
 Comments and Complex Expressions
 ================================================================================
 

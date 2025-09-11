@@ -239,6 +239,32 @@
     "fields": {}
   },
   {
+    "type": "flow_block",
+    "named": true,
+    "fields": {
+      "config": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "block",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "function_call",
     "named": true,
     "fields": {
@@ -426,6 +452,32 @@
     }
   },
   {
+    "type": "module_block",
+    "named": true,
+    "fields": {
+      "config": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "block",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "number",
     "named": true,
     "fields": {}
@@ -555,6 +607,7 @@
   {
     "type": "runbook",
     "named": true,
+    "root": true,
     "fields": {},
     "children": {
       "multiple": true,
@@ -569,6 +622,10 @@
           "named": true
         },
         {
+          "type": "flow_block",
+          "named": true
+        },
+        {
           "type": "import_statement",
           "named": true
         },
@@ -577,7 +634,15 @@
           "named": true
         },
         {
+          "type": "module_block",
+          "named": true
+        },
+        {
           "type": "output_block",
+          "named": true
+        },
+        {
+          "type": "runbook_block",
           "named": true
         },
         {
@@ -589,6 +654,32 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "runbook_block",
+    "named": true,
+    "fields": {
+      "config": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "block",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -743,6 +834,10 @@
     "named": false
   },
   {
+    "type": "flow",
+    "named": false
+  },
+  {
     "type": "identifier",
     "named": true
   },
@@ -755,11 +850,19 @@
     "named": false
   },
   {
+    "type": "module",
+    "named": false
+  },
+  {
     "type": "null",
     "named": true
   },
   {
     "type": "output",
+    "named": false
+  },
+  {
+    "type": "runbook",
     "named": false
   },
   {

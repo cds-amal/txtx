@@ -64,6 +64,18 @@ impl RunbookBuilder {
         OutputBuilder::new(self, name.into())
     }
 
+    pub fn flow(self, name: impl Into<String>) -> FlowBuilder {
+        FlowBuilder::new(self, name.into())
+    }
+
+    pub fn module(self, name: impl Into<String>) -> ModuleBuilder {
+        ModuleBuilder::new(self, name.into())
+    }
+
+    pub fn runbook_block(self, name: impl Into<String>) -> RunbookBlockBuilder {
+        RunbookBlockBuilder::new(self, name.into())
+    }
+
     pub fn build(self) -> Runbook {
         self.runbook
     }
@@ -262,6 +274,104 @@ impl OutputBuilder {
 
     pub fn done(mut self) -> RunbookBuilder {
         self.parent.runbook.outputs.push(self.output);
+        self.parent
+    }
+}
+
+/// Builder for flow blocks
+pub struct FlowBuilder {
+    parent: RunbookBuilder,
+    flow: FlowBlock,
+}
+
+impl FlowBuilder {
+    fn new(parent: RunbookBuilder, name: String) -> Self {
+        Self { parent, flow: FlowBlock { name, attributes: HashMap::new() } }
+    }
+
+    pub fn description(self, desc: &str) -> Self {
+        self.attr("description", Expression::String(desc.to_string()))
+    }
+
+    pub fn chain_id(self, value: Expression) -> Self {
+        self.attr("chain_id", value)
+    }
+
+    pub fn rpc_url(self, value: Expression) -> Self {
+        self.attr("rpc_url", value)
+    }
+
+    pub fn attr(mut self, key: &str, value: Expression) -> Self {
+        self.flow.attributes.insert(key.to_string(), value);
+        self
+    }
+
+    pub fn done(mut self) -> RunbookBuilder {
+        self.parent.runbook.flows.push(self.flow);
+        self.parent
+    }
+}
+
+/// Builder for module blocks
+pub struct ModuleBuilder {
+    parent: RunbookBuilder,
+    module: ModuleBlock,
+}
+
+impl ModuleBuilder {
+    fn new(parent: RunbookBuilder, name: String) -> Self {
+        Self { parent, module: ModuleBlock { name, attributes: HashMap::new() } }
+    }
+
+    pub fn name(self, name: &str) -> Self {
+        self.attr("name", Expression::String(name.to_string()))
+    }
+
+    pub fn description(self, desc: &str) -> Self {
+        self.attr("description", Expression::String(desc.to_string()))
+    }
+
+    pub fn version(self, version: &str) -> Self {
+        self.attr("version", Expression::String(version.to_string()))
+    }
+
+    pub fn attr(mut self, key: &str, value: Expression) -> Self {
+        self.module.attributes.insert(key.to_string(), value);
+        self
+    }
+
+    pub fn done(mut self) -> RunbookBuilder {
+        self.parent.runbook.modules.push(self.module);
+        self.parent
+    }
+}
+
+/// Builder for runbook blocks
+pub struct RunbookBlockBuilder {
+    parent: RunbookBuilder,
+    runbook_block: RunbookBlock,
+}
+
+impl RunbookBlockBuilder {
+    fn new(parent: RunbookBuilder, name: String) -> Self {
+        Self { parent, runbook_block: RunbookBlock { name, attributes: HashMap::new() } }
+    }
+
+    pub fn location(self, path: &str) -> Self {
+        self.attr("location", Expression::String(path.to_string()))
+    }
+
+    pub fn inputs(self, inputs: Expression) -> Self {
+        self.attr("inputs", inputs)
+    }
+
+    pub fn attr(mut self, key: &str, value: Expression) -> Self {
+        self.runbook_block.attributes.insert(key.to_string(), value);
+        self
+    }
+
+    pub fn done(mut self) -> RunbookBuilder {
+        self.parent.runbook.runbook_blocks.push(self.runbook_block);
         self.parent
     }
 }

@@ -17,6 +17,9 @@ module.exports = grammar({
       $.variable_declaration,
       $.input_declaration,
       $.import_statement,
+      $.flow_block,
+      $.module_block,
+      $.runbook_block,
     ),
 
     // Addon block: addon "network_name" { ... }
@@ -68,6 +71,27 @@ module.exports = grammar({
     import_statement: $ => seq(
       'import',
       field('path', $.string),
+    ),
+
+    // Flow block: flow "name" { ... }
+    flow_block: $ => seq(
+      'flow',
+      field('name', $.string),
+      field('config', $.block),
+    ),
+
+    // Module block: module "name" { ... }
+    module_block: $ => seq(
+      'module',
+      field('name', $.string),
+      field('config', $.block),
+    ),
+
+    // Runbook block: runbook "name" { ... }
+    runbook_block: $ => seq(
+      'runbook',
+      field('name', $.string),
+      field('config', $.block),
     ),
 
     // Block: { key = value ... }

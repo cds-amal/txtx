@@ -1,4 +1,5 @@
 {
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
   "name": "txtx",
   "rules": {
     "runbook": {
@@ -38,6 +39,18 @@
         {
           "type": "SYMBOL",
           "name": "import_statement"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "flow_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "module_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "runbook_block"
         }
       ]
     },
@@ -228,6 +241,81 @@
         }
       ]
     },
+    "flow_block": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "flow"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "string"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "config",
+          "content": {
+            "type": "SYMBOL",
+            "name": "block"
+          }
+        }
+      ]
+    },
+    "module_block": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "module"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "string"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "config",
+          "content": {
+            "type": "SYMBOL",
+            "name": "block"
+          }
+        }
+      ]
+    },
+    "runbook_block": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "runbook"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "string"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "config",
+          "content": {
+            "type": "SYMBOL",
+            "name": "block"
+          }
+        }
+      ]
+    },
     "block": {
       "type": "SEQ",
       "members": [
@@ -360,7 +448,8 @@
             },
             {
               "type": "PATTERN",
-              "value": "[^\"]|\"[^\"]|\"\"[^\"]*"
+              "value": "[^\"]|\"[^\"]|\"\"[^\"]*",
+              "flags": "s"
             },
             {
               "type": "STRING",
@@ -832,6 +921,6 @@
   "precedences": [],
   "externals": [],
   "inline": [],
-  "supertypes": []
+  "supertypes": [],
+  "reserved": {}
 }
-

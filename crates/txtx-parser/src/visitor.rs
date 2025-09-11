@@ -20,6 +20,15 @@ pub trait RunbookVisitor {
         for variable in &runbook.variables {
             self.visit_variable(variable);
         }
+        for flow in &runbook.flows {
+            self.visit_flow(flow);
+        }
+        for module in &runbook.modules {
+            self.visit_module(module);
+        }
+        for runbook_block in &runbook.runbook_blocks {
+            self.visit_runbook_block(runbook_block);
+        }
     }
 
     fn visit_addon(&mut self, addon: &AddonBlock) {
@@ -40,6 +49,18 @@ pub trait RunbookVisitor {
 
     fn visit_variable(&mut self, variable: &VariableDeclaration) {
         self.visit_attributes(&variable.attributes);
+    }
+
+    fn visit_flow(&mut self, flow: &FlowBlock) {
+        self.visit_attributes(&flow.attributes);
+    }
+
+    fn visit_module(&mut self, module: &ModuleBlock) {
+        self.visit_attributes(&module.attributes);
+    }
+
+    fn visit_runbook_block(&mut self, runbook_block: &RunbookBlock) {
+        self.visit_attributes(&runbook_block.attributes);
     }
 
     fn visit_attributes(&mut self, attrs: &std::collections::HashMap<String, Expression>) {

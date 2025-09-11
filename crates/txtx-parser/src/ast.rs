@@ -10,6 +10,9 @@ pub struct Runbook {
     pub actions: Vec<ActionBlock>,
     pub outputs: Vec<OutputBlock>,
     pub variables: Vec<VariableDeclaration>,
+    pub flows: Vec<FlowBlock>,
+    pub modules: Vec<ModuleBlock>,
+    pub runbook_blocks: Vec<RunbookBlock>,
 }
 
 impl Runbook {
@@ -20,6 +23,9 @@ impl Runbook {
             actions: Vec::new(),
             outputs: Vec::new(),
             variables: Vec::new(),
+            flows: Vec::new(),
+            modules: Vec::new(),
+            runbook_blocks: Vec::new(),
         }
     }
 }
@@ -52,6 +58,24 @@ pub struct OutputBlock {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VariableDeclaration {
+    pub name: String,
+    pub attributes: HashMap<String, Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FlowBlock {
+    pub name: String,
+    pub attributes: HashMap<String, Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleBlock {
+    pub name: String,
+    pub attributes: HashMap<String, Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunbookBlock {
     pub name: String,
     pub attributes: HashMap<String, Expression>,
 }

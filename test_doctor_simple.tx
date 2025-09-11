@@ -1,0 +1,9 @@
+action "send" "evm::send_eth" {
+    signer = signer.undefined_signer
+    to = "0x123"
+    value = "1000"
+}
+
+output "bad" {
+    value = action.send.from
+}
