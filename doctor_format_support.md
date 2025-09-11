@@ -30,6 +30,9 @@ runbook.tx:10:5: error: Field 'from' does not exist (see: https://docs.txtx.dev/
 runbook.tx:15:3: warning: Unused variable 'x' (hint: remove or use it)
 ```
 
+Note: When specific line/column information is not available (e.g., for manifest-level errors), 
+the format defaults to `file:1:` to ensure editor navigation still works.
+
 ### `json`
 Machine-readable JSON format for tooling integration:
 ```json
