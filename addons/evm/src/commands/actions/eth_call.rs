@@ -262,7 +262,7 @@ async fn build_eth_call(
         }
     } else {
         // todo(hack): assume yul contract if no function name
-        function_args.and_then(|a| Some(a.expect_buffer_bytes())).unwrap_or(vec![])
+        function_args.and_then(|a| a.get_buffer_bytes_result().ok()).unwrap_or(vec![])
     };
 
     let common = CommonTransactionFields {
