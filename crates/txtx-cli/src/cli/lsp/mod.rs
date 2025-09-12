@@ -1,9 +1,12 @@
+mod backend;
+
 use lsp_server::{Connection, Message, Request, Response};
 use lsp_types::{
     InitializeParams, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
     CompletionOptions, OneOf,
 };
 use std::error::Error;
+use self::backend::TxtxLspBackend;
 
 /// Run the Language Server Protocol server
 pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -48,7 +51,7 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
     eprintln!("LSP server initialized successfully");
     
     // Create the backend
-    let backend = txtx_lsp_server::TxtxLspBackend::new();
+    let backend = TxtxLspBackend::new();
     
     // Main message loop
     for message in &connection.receiver {
@@ -87,7 +90,7 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
 
 fn handle_request(
     req: Request,
-    backend: &txtx_lsp_server::TxtxLspBackend,
+    backend: &TxtxLspBackend,
 ) -> Option<Response> {
     match req.method.as_str() {
         "textDocument/definition" => {
@@ -151,7 +154,7 @@ fn handle_request(
 
 fn handle_notification(
     not: lsp_server::Notification,
-    backend: &txtx_lsp_server::TxtxLspBackend,
+    backend: &TxtxLspBackend,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     match not.method.as_str() {
         "textDocument/didOpen" => {

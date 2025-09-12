@@ -8,18 +8,14 @@ The txtx LSP provides IDE support for txtx runbook files (`.tx`) and manifest fi
 
 ### Core Components
 
-1. **`txtx-lsp-server`** - The LSP implementation using `lsp-server` (rust-analyzer's approach)
-   - `backend_sync.rs` - Synchronous LSP backend implementing the protocol handlers
-   - `lib.rs` - Public API surface
+1. **`txtx-cli/src/cli/lsp/`** - Complete LSP implementation integrated in the CLI
+   - `mod.rs` - LSP server entry point, message loop, and request routing
+   - `backend.rs` - Synchronous LSP backend implementing all protocol handlers (~500 lines)
    - Uses `lsp-server` crate for protocol handling (same as rust-analyzer)
    - No async runtime overhead - purely synchronous for better performance
+   - Direct integration - no separate crate needed (see ADR-001)
 
-2. **`txtx-cli`** - Contains the LSP server binary
-   - `src/cli/lsp.rs` - LSP server entry point and message loop
-   - Handles stdio communication with clients
-   - Routes LSP requests to the backend
-
-3. **`vscode-extension`** - VSCode client extension
+2. **`vscode-extension`** - VSCode client extension
    - Connects VSCode to the txtx LSP server
    - Auto-detects development binary or uses system txtx
    - Provides debugging commands and status indicators

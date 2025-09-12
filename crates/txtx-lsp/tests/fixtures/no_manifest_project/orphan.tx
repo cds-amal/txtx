@@ -1,9 +1,0 @@
-// Orphan runbook without manifest
-
-action "test" "http::get" {
-  url = inputs.some_url
-}
-
-output "result" {
-  value = action.test.response
-}
