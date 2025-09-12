@@ -903,7 +903,7 @@ impl RunbookWorkspaceContext {
                     }
                 }
             }
-            let Some(mut current_package) = self.packages.get(source_package_id) else {
+            let Some(current_package) = self.packages.get(source_package_id) else {
                 return Ok(None);
             };
 
@@ -914,8 +914,7 @@ impl RunbookWorkspaceContext {
                 .and_then(|c| Some(&c.package_id))
                 .and_then(|p| self.packages.get(&p));
 
-            if let Some(imported_package) = imported_package {
-                current_package = imported_package;
+            if imported_package.is_some() {
                 continue;
             }
         }
