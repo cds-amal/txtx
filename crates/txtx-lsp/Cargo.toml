@@ -26,6 +26,11 @@ wasm-bindgen = { version = "0.2.91", optional = true }
 wasm-bindgen-futures = { version = "0.4.41", optional = true }
 web-sys = { version = "0.3", features = ["console"], optional = true }
 
+[dev-dependencies]
+tempfile = "3.8"
+tokio = { version = "1.35", features = ["full"] }
+serde_json = "1.0"
+
 [features]
 default = [
   "txtx-core/default",

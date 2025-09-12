@@ -2,5 +2,8 @@
     "rust-analyzer.linkedProjects": [
     ],
     "rust-analyzer.showUnlinkedFileNotification": false,
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "files.associations": {
+        "*.tx": "txtx"
+    }
 }

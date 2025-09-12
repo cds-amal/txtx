@@ -1,0 +1,11 @@
+// Configure system runbook
+
+action "configure" "http::post" {
+  url = inputs.api_url
+  auth = inputs.private_key
+  contract = inputs.contract_address
+}
+
+output "configured" {
+  value = action.configure.success
+}

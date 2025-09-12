@@ -86,7 +86,7 @@ enum Command {
     Docs(GetDocumentation),
     /// Start the txtx language server
     #[clap(name = "lsp", bin_name = "lsp")]
-    Lsp,
+    Lsp(LspCommand),
     /// Start a server to listen for requests to execute runbooks
     #[clap(name = "serve", bin_name = "serve")]
     #[cfg(feature = "txtx_serve")]
@@ -149,6 +149,13 @@ pub struct CheckRunbook {
 
 #[derive(Parser, PartialEq, Clone, Debug)]
 pub struct GetDocumentation;
+
+#[derive(Parser, PartialEq, Clone, Debug)]
+pub struct LspCommand {
+    /// Start the language server in stdio mode (this flag is accepted for compatibility but has no effect as stdio is the default)
+    #[arg(long = "stdio")]
+    pub stdio: bool,
+}
 
 #[derive(Parser, PartialEq, Clone, Debug)]
 pub struct DoctorCommand {
@@ -320,7 +327,18 @@ pub fn main() {
         }
     };
 
-    let buffer_stdin = if let Command::Lsp = opts.command { None } else { load_stdin() };
+    // Special case for LSP - it runs its own synchronous loop
+    if let Command::Lsp(_) = opts.command {
+        match lsp::run_lsp() {
+            Err(e) => {
+                eprintln!("LSP server error: {}", e);
+                process::exit(1);
+            }
+            Ok(_) => return,
+        }
+    }
+
+    let buffer_stdin = load_stdin();
 
     match hiro_system_kit::nestable_block_on(handle_command(opts, &ctx, buffer_stdin)) {
         Err(e) => {
@@ -361,8 +379,9 @@ async fn handle_command(
         Command::Snapshots(SnapshotCommand::Commit(cmd)) => {
             snapshots::handle_commit_command(&cmd, ctx).await?;
         }
-        Command::Lsp => {
-            lsp::run_lsp().await?;
+        Command::Lsp(_lsp_cmd) => {
+            // This case is handled before entering the async runtime
+            unreachable!("LSP command should be handled synchronously");
         }
         #[cfg(feature = "txtx_serve")]
         Command::Serve(cmd) => {

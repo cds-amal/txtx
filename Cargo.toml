@@ -23,7 +23,7 @@ members = [
     "addons/stacks",
     "addons/svm/core",
     "addons/telegram",
-    "addons/sp1", 
+    "addons/sp1", "crates/txtx-lsp-server", 
 ]
 default-members = ["crates/txtx-cli"]
 resolver = "2"

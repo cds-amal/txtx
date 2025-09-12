@@ -1,0 +1,10 @@
+{
+    "txtx.trace.server": "verbose",
+    "editor.hover.enabled": true,
+    "editor.hover.delay": 300,
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": true
+    }
+}

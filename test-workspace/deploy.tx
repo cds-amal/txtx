@@ -1,0 +1,18 @@
+// Deploy contract runbook
+// Test go-to-definition on the inputs below
+
+action "deploy" "evm::deploy_contract" {
+  // Try Ctrl+Click or F12 on "contract_address" after "inputs."
+  contract_address = inputs.contract_address
+  private_key = inputs.private_key
+  api_endpoint = inputs.api_url
+}
+
+output "contract_address" {
+  value = action.deploy.contract_address
+}
+
+output "api_used" {
+  // This should also work for go-to-definition
+  value = inputs.api_url
+}

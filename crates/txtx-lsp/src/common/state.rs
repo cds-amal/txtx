@@ -356,6 +356,7 @@ pub struct EditorState {
     pub runbooks_lookup: HashMap<FileLocation, RunbookMetadata>,
     pub active_runbooks: HashMap<FileLocation, ActiveRunbookData>,
     pub settings: InitializationOptions,
+    pub pending_workspace_roots: Vec<FileLocation>,
 }
 
 impl EditorState {
@@ -365,6 +366,7 @@ impl EditorState {
             runbooks_lookup: HashMap::new(),
             active_runbooks: HashMap::new(),
             settings: InitializationOptions::default(),
+            pending_workspace_roots: Vec::new(),
         }
     }
 
@@ -474,15 +476,37 @@ impl EditorState {
 
     pub fn get_definition_location(
         &self,
-        _runbook_location: &FileLocation,
-        _position: &Position,
+        runbook_location: &FileLocation,
+        position: &Position,
     ) -> Option<lsp_types::Location> {
-        // let runbook = self.active_runbooks.get(runbook_location)?;
-        // let _position = Position {
-        //     line: position.line + 1,
-        //     character: position.character + 1,
-        // };
-        None
+        use crate::common::input_parser::parse_input_reference;
+        use crate::common::manifest_parser::find_input_definition;
+        
+        // Get the active runbook content
+        let active_runbook = self.active_runbooks.get(runbook_location)?;
+        
+        // Parse to see if we're on an input reference
+        let input_ref = parse_input_reference(&active_runbook.source, position)?;
+        
+        // Find the manifest location for this runbook
+        let runbook_metadata = self.runbooks_lookup.get(runbook_location)?;
+        let _workspace = self.workspaces.get(&runbook_metadata.manifest_location)?;
+        
+        // Read the manifest file content
+        // TODO: We should cache this content instead of reading from disk each time
+        let manifest_content = runbook_metadata.manifest_location.read_content_as_utf8().ok()?;
+        
+        // Find the input definition in the manifest
+        // TODO: Use the actual environment from the runbook context
+        let range = find_input_definition(&manifest_content, &input_ref.name, Some("default"))?;
+        
+        // Build the manifest URI
+        let manifest_uri = format!("file://{}", runbook_metadata.manifest_location);
+        
+        Some(lsp_types::Location {
+            uri: lsp_types::Url::parse(&manifest_uri).ok()?,
+            range,
+        })
     }
 
     pub fn get_hover_data(
@@ -697,98 +721,129 @@ impl WorkspaceState {
 }
 
 pub async fn build_state(
-    _manifest_location: &FileLocation,
-    _workspace_state: &mut WorkspaceState,
+    manifest_location: &FileLocation,
+    workspace_state: &mut WorkspaceState,
     _file_accessor: Option<&dyn FileAccessor>,
 ) -> Result<(), String> {
-    // let manifest = match file_accessor {
-    //     None => WorkspaceManifest::from_location(manifest_location)?,
-    //     Some(file_accessor) => {
-    //         WorkspaceManifest::from_file_accessor(manifest_location, file_accessor).await?
-    //     }
-    // };
+    // Read and parse the manifest to properly build workspace
+    let manifest_content = manifest_location.read_content_as_utf8()
+        .map_err(|e| format!("Failed to read manifest: {}", e))?;
+    
+    // Simple YAML parsing to extract runbook information
+    // We're looking for structure like:
+    // runbooks:
+    //   - name: deploy
+    //     location: runbooks/deploy.tx
+    //     description: optional description
+    
+    let lines: Vec<&str> = manifest_content.lines().collect();
+    let mut in_runbooks = false;
+    let mut current_runbook_name: Option<String> = None;
+    let mut current_runbook_location: Option<String> = None;
+    let mut runbooks_indent = 0;
+    
+    for line in lines {
+        let trimmed = line.trim();
+        
+        // Skip empty lines and comments
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        
+        // Calculate indentation
+        let indent = line.len() - line.trim_start().len();
+        
+        // Check if we're entering runbooks section
+        if trimmed == "runbooks:" {
+            in_runbooks = true;
+            runbooks_indent = indent;
+            continue;
+        }
+        
+        if !in_runbooks {
+            continue;
+        }
+        
+        // Check if we've exited runbooks section
+        if indent <= runbooks_indent && !trimmed.starts_with('-') {
+            in_runbooks = false;
+            continue;
+        }
+        
+        // Parse runbook entries
+        if trimmed.starts_with("- name:") || trimmed.starts_with("-name:") {
+            // Save previous runbook if we have both name and location
+            if let (Some(name), Some(location)) = (&current_runbook_name, &current_runbook_location) {
+                add_runbook_to_workspace(workspace_state, manifest_location, name, location)?;
+            }
+            
+            // Start new runbook
+            current_runbook_name = trimmed
+                .strip_prefix("- name:")
+                .or_else(|| trimmed.strip_prefix("-name:"))
+                .map(|s| s.trim().trim_matches('"').trim_matches('\'').to_string());
+            current_runbook_location = None;
+        } else if trimmed.starts_with("location:") {
+            current_runbook_location = trimmed
+                .strip_prefix("location:")
+                .map(|s| s.trim().trim_matches('"').trim_matches('\'').to_string());
+        } else if trimmed.starts_with("- location:") || trimmed.starts_with("-location:") {
+            // Handle case where location comes first or is the only field
+            let location = trimmed
+                .strip_prefix("- location:")
+                .or_else(|| trimmed.strip_prefix("-location:"))
+                .map(|s| s.trim().trim_matches('"').trim_matches('\'').to_string());
+            
+            if let Some(loc) = location {
+                // If we don't have a name, derive it from the location
+                let name = current_runbook_name.clone()
+                    .unwrap_or_else(|| {
+                        // Extract filename without extension as name
+                        loc.rsplit('/').next()
+                            .and_then(|f| f.strip_suffix(".tx"))
+                            .unwrap_or("unknown")
+                            .to_string()
+                    });
+                
+                add_runbook_to_workspace(workspace_state, manifest_location, &name, &loc)?;
+                current_runbook_name = None;
+                current_runbook_location = None;
+            }
+        }
+    }
+    
+    // Don't forget the last runbook
+    if let (Some(name), Some(location)) = (current_runbook_name, current_runbook_location) {
+        add_runbook_to_workspace(workspace_state, manifest_location, &name, &location)?;
+    }
+    
+    Ok(())
+}
 
-    //     let (_manifest, _runbook_name, mut runbook, runbook_state) =
-    //     load_runbook_from_manifest(&cmd.manifest_path, &cmd.runbook, &cmd.environment).await?;
-
-    // match &runbook_state {
-    //     Some(RunbookState::File(state_file_location)) => {
-    //         let ctx = RunbookSnapshotContext::new();
-    //         let old = load_runbook_execution_snapshot(state_file_location)?;
-    //         for run in runbook.running_contexts.iter_mut() {
-    //             let frontier = HashSet::new();
-    //             let _res = run
-    //                 .execution_context
-    //                 .simulate_execution(
-    //                     &runbook.runtime_context,
-    //                     &run.workspace_context,
-    //                     &runbook.supervision_context,
-    //                     &frontier,
-    //                 )
-    //                 .await;
-    //         }
-
-    // let (deployment, mut artifacts) = generate_default_deployment(
-    //     &manifest,
-    //     &StacksNetwork::Simnet,
-    //     false,
-    //     file_accessor,
-    //     Some(StacksEpochId::Epoch21),
-    // )
-    // .await?;
-
-    // let mut session = initiate_session_from_deployment(&manifest);
-    // let UpdateSessionExecutionResult { contracts, .. } = update_session_with_contracts_executions(
-    //     &mut session,
-    //     &deployment,
-    //     Some(&artifacts.asts),
-    //     false,
-    //     Some(StacksEpochId::Epoch21),
-    // );
-    // for (contract_id, mut result) in contracts.into_iter() {
-    //     let (_, runbook_location) = match deployment.contracts.get(&contract_id) {
-    //         Some(entry) => entry,
-    //         None => continue,
-    //     };
-    //     locations.insert(contract_id.clone(), runbook_location.clone());
-    //     if let Some(contract_metadata) = manifest.contracts_settings.get(runbook_location) {
-    //         clarity_versions.insert(contract_id.clone(), contract_metadata.clarity_version);
-    //     }
-
-    //     match result {
-    //         Ok(mut execution_result) => {
-    //             if let Some(entry) = artifacts.diags.get_mut(&contract_id) {
-    //                 entry.append(&mut execution_result.diagnostics);
-    //             }
-
-    //             if let EvaluationResult::Contract(contract_result) = execution_result.result {
-    //                 if let Some(ast) = artifacts.asts.get(&contract_id) {
-    //                     definitions.insert(
-    //                         contract_id.clone(),
-    //                         get_public_function_definitions(&ast.expressions),
-    //                     );
-    //                 }
-    //                 analyses.insert(contract_id.clone(), Some(contract_result.contract.analysis));
-    //             };
-    //         }
-    //         Err(ref mut diags) => {
-    //             if let Some(entry) = artifacts.diags.get_mut(&contract_id) {
-    //                 entry.append(diags);
-    //             }
-    //             continue;
-    //         }
-    //     };
-    // }
-
-    // protocol_state.consolidate(
-    //     &mut locations,
-    //     &mut artifacts.asts,
-    //     &mut artifacts.deps,
-    //     &mut artifacts.diags,
-    //     &mut definitions,
-    //     &mut analyses,
-    //     &mut clarity_versions,
-    // );
-
+fn add_runbook_to_workspace(
+    workspace_state: &mut WorkspaceState,
+    manifest_location: &FileLocation,
+    name: &str,
+    location: &str,
+) -> Result<(), String> {
+    // Build the full path to the runbook
+    let parent = manifest_location.get_parent_location()
+        .map_err(|e| format!("Failed to get manifest parent: {}", e))?;
+    
+    let mut runbook_location = parent;
+    runbook_location.append_path(location)
+        .map_err(|e| format!("Failed to build runbook path: {}", e))?;
+    
+    // Create RunbookState for this runbook
+    let runbook_id = RunbookId::new(None, None, name);
+    let runbook_state = RunbookState::new(
+        runbook_id,
+        vec![], // No diagnostics initially
+        runbook_location.clone()
+    );
+    
+    // Add to workspace
+    workspace_state.runbooks.insert(runbook_location, runbook_state);
+    
     Ok(())
 }

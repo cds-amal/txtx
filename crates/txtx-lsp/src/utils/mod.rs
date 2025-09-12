@@ -1,3 +1,5 @@
+pub mod manifest_finder;
+
 use lsp_types::Diagnostic as LspDiagnostic;
 use lsp_types::Url;
 use lsp_types::{DiagnosticSeverity, Position, Range};

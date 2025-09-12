@@ -9,7 +9,7 @@ use lsp_types::{
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 use txtx_addon_kit::helpers::fs::{FileAccessor, FileLocation};
-use txtx_addon_kit::types::diagnostics::Diagnostic;
+use txtx_addon_kit::types::diagnostics::{Diagnostic as TxtxDiagnostic, DiagnosticLevel};
 
 use super::requests::capabilities::{get_capabilities, InitializationOptions};
 
@@ -59,7 +59,7 @@ pub enum LspNotification {
 
 #[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LspNotificationResponse {
-    pub aggregated_diagnostics: Vec<(FileLocation, Vec<Diagnostic>)>,
+    pub aggregated_diagnostics: Vec<(FileLocation, Vec<TxtxDiagnostic>)>,
     pub notification: Option<(MessageType, String)>,
 }
 
@@ -112,8 +112,33 @@ pub async fn process_notification(
             }
         }
         LspNotification::RunbookOpened(runbook_location) => {
-            let manifest_location =
-                runbook_location.get_workspace_manifest_location(file_accessor).await?;
+            // Find manifest by searching upward (stops at .git directory)
+            let manifest_location = if file_accessor.is_none() {
+                // Use our upward search when no file accessor (local filesystem)
+                use crate::utils::manifest_finder::find_manifest_for_tx_file;
+                match find_manifest_for_tx_file(&runbook_location) {
+                    Some(location) => location,
+                    None => {
+                        // Return error diagnostic that will be shown to the user
+                        let error_msg = format!(
+                            "No txtx.yml found for {}. Searched up to project root (.git directory).",
+                            runbook_location.get_file_name().unwrap_or_default()
+                        );
+                        
+                        // Create a diagnostic error for the file
+                        let diagnostic = TxtxDiagnostic::error_from_string(error_msg.clone());
+                        
+                        let diagnostics = vec![(runbook_location, vec![diagnostic])];
+                        return Ok(LspNotificationResponse {
+                            aggregated_diagnostics: diagnostics,
+                            notification: Some((MessageType::ERROR, error_msg)),
+                        });
+                    }
+                }
+            } else {
+                // Use existing method when file accessor is available
+                runbook_location.get_workspace_manifest_location(file_accessor).await?
+            };
 
             // store the contract in the active_contracts map
             if !editor_state.try_read(|es| es.active_runbooks.contains_key(&runbook_location))? {
@@ -174,11 +199,19 @@ pub async fn process_notification(
             }
         }
         LspNotification::RunbookSaved(runbook_location) => {
+            
             let manifest_location = match editor_state
                 .try_write(|es| es.clear_workspace_associated_with_runbook(&runbook_location))?
             {
                 Some(manifest_location) => manifest_location,
-                None => runbook_location.get_workspace_manifest_location(file_accessor).await?,
+                None => {
+                    // Try our upward search for manifest
+                    use crate::utils::manifest_finder::find_manifest_for_tx_file;
+                    match find_manifest_for_tx_file(&runbook_location) {
+                        Some(location) => location,
+                        None => runbook_location.get_workspace_manifest_location(file_accessor).await?,
+                    }
+                }
             };
 
             // TODO(): introduce partial analysis #604
@@ -338,13 +371,31 @@ pub fn process_mutating_request(
                 .and_then(|o| serde_json::from_str(o.as_str()?).ok())
                 .unwrap_or(InitializationOptions::default());
 
-            match editor_state.try_write(|es| es.settings = initialization_options.clone()) {
-                Ok(_) => Ok(LspRequestResponse::Initialize(InitializeResult {
-                    server_info: None,
-                    capabilities: get_capabilities(&initialization_options),
-                })),
-                Err(err) => Err(err),
+            // Store the settings
+            editor_state.try_write(|es| es.settings = initialization_options.clone())?;
+            
+            // If we have a root URI, scan for txtx.yml files
+            if let Some(root_uri) = params.root_uri {
+                if let Some(root_location) = FileLocation::try_parse(&root_uri.to_string(), None) {
+                    // Look for txtx.yml in the root
+                    let mut manifest_location = root_location.clone();
+                    if manifest_location.append_path("txtx.yml").is_ok() {
+                        // Try to read to check if it exists
+                        if manifest_location.read_content().is_ok() {
+                            // Found a manifest, initialize the workspace
+                            // Note: We can't do async operations here, so we'll just mark it for later
+                            editor_state.try_write(|es| {
+                                es.pending_workspace_roots.push(manifest_location);
+                            })?;
+                        }
+                    }
+                }
             }
+            
+            Ok(LspRequestResponse::Initialize(InitializeResult {
+                server_info: None,
+                capabilities: get_capabilities(&initialization_options),
+            }))
         }
         _ => Err(format!("Unexpected command: {:?}, should not not mutate state", &command)),
     }

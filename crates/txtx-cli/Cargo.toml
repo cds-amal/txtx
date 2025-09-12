@@ -45,8 +45,10 @@ dialoguer = "0.11.0"
 console = "0.15.8"
 convert_case = "0.6.0"
 rusqlite = "0.31.0"
-txtx-lsp = { path = "../txtx-lsp" }
-tower-lsp = { version = "0.20.0" }
+txtx-lsp-server = { path = "../txtx-lsp-server" }
+lsp-server = "0.7.6"
+lsp-types = "0.94.0"
+crossbeam-channel = "0.5"
 chrono = "0.4.38"
 actix-web = "4"
 indicatif = "0.18.0"
