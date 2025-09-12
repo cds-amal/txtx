@@ -1,0 +1,61 @@
+// Test version of step-5-david without signer definition
+addon "evm" {
+    rpc_api_url = "https://eth.example.com"
+    chain_id = 1
+}
+
+// Missing signer definition - should cause error
+
+action "call_pubkey_registration_message_hash" "evm::call_contract" {
+    description = "Get the pubkey registration message hash"
+    contract_address = "0x123"
+    contract_abi = "[]"
+    function_name = "pubkeyRegistrationMessageHash"
+    function_args = [
+        signer.operator.address  // This should error - no signer defined
+    ]
+    signer = signer.operator
+}
+
+action "get_registration_params" "std::send_http_request" {
+    description = "Get BLS registration parameters"
+    url = "https://example.com"
+    method = "POST"
+    body = {
+        eoa_address = signer.operator.address,
+        message = action.call_pubkey_registration_message_hash.result,
+    }
+}
+
+action "modify_allocations" "evm::call_contract" {
+    description = "Modify the allocations"
+    contract_address = "0x456"
+    contract_abi = "[]"
+    function_name = "modifyAllocations"
+    function_args = []
+    signer = signer.operator
+    depends_on = [action.get_registration_params.status_code]
+}
+
+action "register_for_operator_sets" "evm::call_contract" {
+    description = "Register operator"
+    contract_address = "0x789"
+    contract_abi = "[]"
+    function_name = "registerForOperatorSets"
+    function_args = []
+    signer = signer.operator
+    depends_on = [action.modify_allocations.tx_hash]
+}
+
+// These outputs should NOT error - actions are defined
+output "modify_allocations_tx_hash" {
+    value = action.modify_allocations.tx_hash
+}
+
+output "register_for_operator_sets_tx_hash" {
+    value = action.register_for_operator_sets.tx_hash
+}
+
+output "pubkey_registration_message_hash" {
+    value = action.call_pubkey_registration_message_hash.result
+}

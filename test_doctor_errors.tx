@@ -1,0 +1,24 @@
+// Test file with intentional errors
+
+addon "evm" {
+    rpc_api_url = "https://eth.llamarpc.com"
+    chain_id = 1
+}
+
+// Action that references undefined signer
+action "send_eth" "evm::send_eth" {
+    from = signer.missing_signer.address  // ERROR: undefined signer
+    to = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7"
+    value = "1000000000000000000"
+    signer = signer.missing_signer
+}
+
+// Output that references undefined action
+output "bad_ref" {
+    value = action.nonexistent.tx_hash  // ERROR: undefined action
+}
+
+// Output that references a field that doesn't exist
+output "bad_field" {
+    value = action.send_eth.invalid_field  // ERROR: invalid field
+}

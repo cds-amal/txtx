@@ -1,29 +1,44 @@
+// Test file to verify doctor's two-pass validation
+
 addon "evm" {
+    rpc_api_url = "https://eth.llamarpc.com"
     chain_id = 1
-    rpc_api_url = "https://mainnet.infura.io"
 }
 
-signer "deployer" "evm::secret_key" {
-    secret_key = input.private_key
+// Define signer (this was missing in the original problematic file)
+signer "operator" "evm::wallet" {
+    mnemonic = "test test test test test test test test test test test junk"
 }
 
-action "send" "evm::send_eth" {
-    signer = signer.deployer
-    to = "0x1234567890123456789012345678901234567890"
-    value = evm::to_wei(0.1, "ether")
+// Action that uses the signer
+action "send_eth" "evm::send_eth" {
+    from = signer.operator.address
+    to = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7"
+    value = "1000000000000000000"
+    signer = signer.operator
 }
 
-// This should trigger an error - send_eth doesn't have a 'from' field
-output "sender" {
-    value = action.send.from
+// Another action that depends on the first one
+action "check_tx" "evm::get_transaction" {
+    tx_hash = action.send_eth.tx_hash  // Forward reference to send_eth
+    signer = signer.operator
 }
 
-// This should trigger an error - send_eth doesn't have a 'to' field  
-output "recipient" {
-    value = action.send.to
-}
-
-// This should be fine - send_eth has tx_hash
+// Output that references both actions
 output "tx_hash" {
-    value = action.send.tx_hash
+    value = action.send_eth.tx_hash
+}
+
+output "tx_details" {
+    value = action.check_tx.result
+}
+
+// Variable that references an action
+variable "sent_tx_hash" {
+    value = action.send_eth.tx_hash
+}
+
+// Output that uses the variable
+output "saved_hash" {
+    value = variable.sent_tx_hash
 }

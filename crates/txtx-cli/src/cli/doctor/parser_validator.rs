@@ -46,6 +46,8 @@ pub struct ValidationVisitor<'a> {
     defined_signers: HashMap<String, String>,
     /// Track construct definition order for dependency validation
     definition_order: Vec<(String, String)>,
+    /// Current phase: collection (false) or validation (true)
+    is_validation_phase: bool,
 }
 
 impl<'a> ValidationVisitor<'a> {
@@ -64,6 +66,7 @@ impl<'a> ValidationVisitor<'a> {
             defined_variables: HashMap::new(),
             defined_signers: HashMap::new(),
             definition_order: Vec::new(),
+            is_validation_phase: false,
         }
     }
 
@@ -341,19 +344,18 @@ impl<'a> ValidationVisitor<'a> {
 
 impl<'a> RunbookVisitor for ValidationVisitor<'a> {
     fn visit_runbook(&mut self, runbook: &Runbook) {
-        // First pass: collect all definitions in order
-        // This allows us to validate forward references
+        // PASS 1: Collect all definitions without validating references
+        // This allows us to validate forward references correctly
+        self.is_validation_phase = false;
         
-        // Visit modules first (they define metadata)
+        // Collect module definitions
         for module in &runbook.modules {
             self.definition_order.push(("module".to_string(), module.name.clone()));
-            self.visit_module(module);
         }
         
-        // Visit flows to collect their inputs
+        // Collect flow definitions and their inputs
         for flow in &runbook.flows {
             self.definition_order.push(("flow".to_string(), flow.name.clone()));
-            // Collect flow inputs but don't validate yet
             let mut flow_inputs = Vec::new();
             for (key, _) in &flow.attributes {
                 if key != "description" {
@@ -363,95 +365,114 @@ impl<'a> RunbookVisitor for ValidationVisitor<'a> {
             self.flow_inputs.insert(flow.name.clone(), flow_inputs);
         }
         
-        // Visit variables
+        // Collect variable definitions
         for variable in &runbook.variables {
             self.definition_order.push(("variable".to_string(), variable.name.clone()));
             self.defined_variables.insert(variable.name.clone(), "defined".to_string());
-            self.visit_variable(variable);
         }
         
-        // Visit signers
+        // Collect signer definitions
         for signer in &runbook.signers {
             self.definition_order.push(("signer".to_string(), signer.name.clone()));
             self.defined_signers.insert(signer.name.clone(), signer.signer_type.clone());
+        }
+        
+        // Collect action definitions and their specifications
+        for action in &runbook.actions {
+            self.definition_order.push(("action".to_string(), action.name.clone()));
+            self.action_types.insert(action.name.clone(), action.action_type.clone());
+            
+            // Get specification for this action
+            let parts: Vec<&str> = action.action_type.split("::").collect();
+            if parts.len() == 2 {
+                let addon_name = parts[0];
+                let action_name = parts[1];
+                
+                if let Some(addon_actions) = self.addon_specs.get(addon_name) {
+                    if let Some((_, spec)) = addon_actions.iter()
+                        .find(|(matcher, _)| matcher == &action_name) {
+                        self.action_specs.insert(action.name.clone(), spec.clone());
+                    }
+                }
+            }
+        }
+        
+        // Collect output definitions
+        for output in &runbook.outputs {
+            self.definition_order.push(("output".to_string(), output.name.clone()));
+        }
+        
+        // PASS 2: Now validate all references with complete context
+        self.is_validation_phase = true;
+        
+        // Validate module attributes
+        for module in &runbook.modules {
+            self.current_block_type = "module".to_string();
+            self.current_block_name = module.name.clone();
+            self.visit_module(module);
+        }
+        
+        // Validate variable attributes
+        for variable in &runbook.variables {
+            self.current_block_type = "variable".to_string();
+            self.current_block_name = variable.name.clone();
+            self.visit_variable(variable);
+        }
+        
+        // Validate signer attributes
+        for signer in &runbook.signers {
+            self.current_block_type = "signer".to_string();
+            self.current_block_name = signer.name.clone();
             self.visit_signer(signer);
         }
         
-        // Visit actions
+        // Validate action attributes
         for action in &runbook.actions {
-            self.definition_order.push(("action".to_string(), action.name.clone()));
+            self.current_block_type = "action".to_string();
+            self.current_block_name = action.name.clone();
             self.visit_action(action);
         }
         
-        // Visit outputs
+        // Validate output attributes
         for output in &runbook.outputs {
-            self.definition_order.push(("output".to_string(), output.name.clone()));
+            self.current_block_type = "output".to_string();
+            self.current_block_name = output.name.clone();
             self.visit_output(output);
         }
         
-        // Now visit flows with full context
+        // Validate flow attributes with full context
         for flow in &runbook.flows {
+            self.current_flow = Some(flow.name.clone());
+            self.current_block_type = "flow".to_string();
+            self.current_block_name = flow.name.clone();
             self.visit_flow(flow);
+            self.current_flow = None;
         }
         
-        // Visit embedded runbooks
+        // Validate embedded runbooks
         for runbook_block in &runbook.runbook_blocks {
             self.visit_runbook_block(runbook_block);
         }
     }
     
     fn visit_action(&mut self, action: &ActionBlock) {
-        // Update context
-        self.current_block_type = "action".to_string();
-        self.current_block_name = action.name.clone();
+        // Context is already set by visit_runbook
+        // Action type and spec are already collected in pass 1
         
-        // Record action type
-        self.action_types.insert(action.name.clone(), action.action_type.clone());
-        
-        // Get specification for this action
-        let parts: Vec<&str> = action.action_type.split("::").collect();
-        if parts.len() == 2 {
-            let addon_name = parts[0];
-            let action_name = parts[1];
-            
-            if let Some(addon_actions) = self.addon_specs.get(addon_name) {
-                if let Some((_, spec)) = addon_actions.iter()
-                    .find(|(matcher, _)| matcher == &action_name) {
-                    self.action_specs.insert(action.name.clone(), spec.clone());
-                }
-            }
-        }
-        
-        // Visit action attributes
+        // Now just validate the attributes
         self.visit_attributes(&action.attributes);
     }
     
     fn visit_output(&mut self, output: &OutputBlock) {
-        // Update context
-        self.current_block_type = "output".to_string();
-        self.current_block_name = output.name.clone();
-        
-        // Visit all attributes (including value)
+        // Context is already set by visit_runbook
+        // Just validate the attributes
         self.visit_attributes(&output.attributes);
     }
     
     fn visit_flow(&mut self, flow: &FlowBlock) {
-        // Set flow context
-        let previous_flow = self.current_flow.clone();
-        let previous_block_type = self.current_block_type.clone();
-        let previous_block_name = self.current_block_name.clone();
-        
-        self.current_flow = Some(flow.name.clone());
-        self.current_block_type = "flow".to_string();
-        self.current_block_name = flow.name.clone();
-        
-        // Visit flow attributes (they can reference inputs and variables)
+        // Context is already set by visit_runbook
+        // Just validate the attributes
         self.visit_attributes(&flow.attributes);
-        
-        // Restore previous context
-        self.current_flow = previous_flow;
-        self.current_block_type = previous_block_type;
-        self.current_block_name = previous_block_name;
     }
     
     fn visit_module(&mut self, module: &ModuleBlock) {
@@ -509,8 +530,10 @@ impl<'a> RunbookVisitor for ValidationVisitor<'a> {
     fn visit_expression(&mut self, expr: &Expression) {
         match expr {
             Expression::Reference(parts) => {
-                // Validate all types of references
-                self.validate_reference(parts);
+                // Only validate references during the validation phase
+                if self.is_validation_phase {
+                    self.validate_reference(parts);
+                }
             }
             Expression::Array(items) => {
                 for item in items {
