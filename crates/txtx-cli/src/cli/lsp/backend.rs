@@ -12,14 +12,13 @@ use lsp_types::{
 };
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::path::{Path, PathBuf};
 
 /// Represents the state of a single document
 #[derive(Debug, Clone)]
 struct Document {
-    uri: Url,
+    _uri: Url, // Kept for future use (e.g., diagnostics)
     content: String,
-    version: i32,
+    _version: i32, // Kept for incremental sync
 }
 
 /// Represents a parsed txtx manifest
@@ -32,7 +31,7 @@ struct Manifest {
 
 #[derive(Debug, Clone)]
 struct RunbookRef {
-    name: String,
+    _name: String, // Kept for future use (e.g., runbook listing)
     location: String,
 }
 
@@ -60,16 +59,16 @@ impl WorkspaceState {
     
     fn open_document(&mut self, uri: Url, content: String) {
         self.documents.insert(uri.clone(), Document {
-            uri,
+            _uri: uri,
             content,
-            version: 1,
+            _version: 1,
         });
     }
     
     fn update_document(&mut self, uri: Url, content: String) {
         if let Some(doc) = self.documents.get_mut(&uri) {
             doc.content = content;
-            doc.version += 1;
+            doc._version += 1;
         }
     }
     
@@ -358,7 +357,7 @@ fn parse_manifest(uri: &Url, content: &str) -> Result<Manifest, String> {
                     i += 1;
                     if i < lines.len() && lines[i].trim().starts_with("location:") {
                         let location = lines[i].split("location:").nth(1).unwrap_or("").trim().to_string();
-                        runbooks.push(RunbookRef { name, location });
+                        runbooks.push(RunbookRef { _name: name, location });
                     }
                 }
                 i += 1;

@@ -6,7 +6,6 @@ use txtx_core::manifest::WorkspaceManifest;
 use txtx_parser::{parse, Runbook, Expression};
 
 pub(crate) mod parser_validator;
-use parser_validator::LocatedInputRef;
 
 #[derive(Debug)]
 pub struct DoctorResult {

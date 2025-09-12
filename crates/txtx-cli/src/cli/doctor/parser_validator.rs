@@ -3,7 +3,7 @@
 //! This module uses the txtx-parser's visitor pattern to perform comprehensive
 //! AST-based validation of runbook files.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use txtx_parser::{RunbookVisitor, Expression, ActionBlock, OutputBlock, Runbook, 
                   FlowBlock, ModuleBlock, RunbookBlock, SignerBlock, VariableDeclaration};

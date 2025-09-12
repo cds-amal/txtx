@@ -5,7 +5,6 @@ use env::TxtxEnv;
 use hiro_system_kit::{self, Logger};
 use runbooks::load_runbook_from_manifest;
 use std::process;
-use std::thread;
 use txtx_cloud::{LoginCommand, PublishRunbook};
 
 mod docs;
