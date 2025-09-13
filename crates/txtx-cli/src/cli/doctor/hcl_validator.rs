@@ -48,6 +48,18 @@ pub struct HclValidationVisitor<'a> {
     is_validation_phase: bool,
     /// Collected input references
     pub input_refs: Vec<LocatedInputRef>,
+    
+    // === Error Tracking ===
+    /// Blocks that have errors (to skip in validation phase)
+    blocks_with_errors: HashSet<String>,
+    /// Primary errors (namespace/type errors) to report first
+    primary_errors: Vec<DoctorError>,
+    
+    // === Error Tracking ===
+    /// Blocks that have errors (to skip in validation phase)
+    blocks_with_errors: HashSet<String>,
+    /// Primary errors (namespace/type errors) to report first
+    primary_errors: Vec<DoctorError>,
 }
 
 #[derive(Clone, Debug)]
@@ -73,6 +85,10 @@ impl<'a> HclValidationVisitor<'a> {
             current_block: None,
             is_validation_phase: false,
             input_refs: Vec::new(),
+            blocks_with_errors: HashSet::new(),
+            primary_errors: Vec::new(),
+            blocks_with_errors: HashSet::new(),
+            primary_errors: Vec::new(),
         }
     }
     
@@ -95,6 +111,15 @@ impl<'a> HclValidationVisitor<'a> {
         }
         
         (line, col)
+    }
+    
+    /// Convert an optional span to line/column position, defaulting to (0, 0)
+    fn optional_span_to_position(&self, span: Option<std::ops::Range<usize>>) -> (usize, usize) {
+        if let Some(span) = span {
+            self.span_to_position(&span)
+        } else {
+            (0, 0)
+        }
     }
     
     /// Process a block based on its type
@@ -136,22 +161,95 @@ impl<'a> HclValidationVisitor<'a> {
                         ctx.name = name.value().to_string();
                     }
                     
-                    if !self.is_validation_phase {
-                        // Collection phase: record action and its type
-                        if let Some(BlockLabel::String(action_type)) = block.labels.get(1) {
-                            let name_str = name.value().to_string();
-                            let type_str = action_type.value().to_string();
-                            
+                    if let Some(BlockLabel::String(action_type)) = block.labels.get(1) {
+                        let name_str = name.value().to_string();
+                        let type_str = action_type.value().to_string();
+                        
+                        if !self.is_validation_phase {
+                            // Collection phase: record action and its type
                             self.action_types.insert(name_str.clone(), type_str.clone());
                             
-                            // Get specification for this action
+                            // Validate and get specification for this action
                             if let Some((namespace, action_name)) = type_str.split_once("::") {
                                 if let Some(addon_actions) = self.addon_specs.get(namespace) {
                                     if let Some((_, spec)) = addon_actions.iter()
                                         .find(|(matcher, _)| matcher == action_name) {
-                                        self.action_specs.insert(name_str, spec.clone());
+                                        self.action_specs.insert(name_str.clone(), spec.clone());
+                                    } else {
+                                        // Unknown action type within known namespace
+                                        let (line, col) = self.optional_span_to_position(action_type.span());
+                                        let available_actions: Vec<String> = addon_actions.iter()
+                                            .map(|(matcher, _)| format!("{}::{}", namespace, matcher))
+                                            .collect();
+                                        
+                                        // Check for common typos
+                                        let suggestion = if namespace == "evm" && action_name == "deploy" {
+                                            Some("Did you mean 'evm::deploy_contract'?".to_string())
+                                        } else {
+                                            // Find similar action names
+                                            let similar = addon_actions.iter()
+                                                .map(|(matcher, _)| matcher)
+                                                .filter(|m| m.contains(action_name) || action_name.contains(*m))
+                                                .map(|m| format!("{}::{}", namespace, m))
+                                                .collect::<Vec<_>>();
+                                            
+                                            if !similar.is_empty() {
+                                                Some(format!("Did you mean: {}?", similar.join(" or ")))
+                                            } else {
+                                                None
+                                            }
+                                        };
+                                        
+                                        self.primary_errors.push(DoctorError {
+                                            message: format!(
+                                                "Unknown action type '{}::{}'. Available actions for '{}': {}",
+                                                namespace, action_name, namespace, available_actions.join(", ")
+                                            ),
+                                            file: self.file_path.clone(),
+                                            line: if line > 0 { Some(line) } else { None },
+                                            column: if col > 0 { Some(col) } else { None },
+                                            context: suggestion,
+                                            documentation_link: Some(format!("https://docs.txtx.io/addons/{}", namespace)),
+                                        });
+                                        self.blocks_with_errors.insert(name_str.clone());
                                     }
+                                } else {
+                                    // Unknown namespace
+                                    let (line, col) = self.optional_span_to_position(action_type.span());
+                                    let available_namespaces: Vec<&str> = self.addon_specs.keys()
+                                        .map(|s| s.as_str())
+                                        .collect();
+                                    
+                                    self.primary_errors.push(DoctorError {
+                                        message: format!(
+                                            "Unknown addon namespace '{}'. Available namespaces: {}",
+                                            namespace, available_namespaces.join(", ")
+                                        ),
+                                        file: self.file_path.clone(),
+                                        line: if line > 0 { Some(line) } else { None },
+                                        column: if col > 0 { Some(col) } else { None },
+                                        context: Some("Make sure you have the correct addon name".to_string()),
+                                        documentation_link: None,
+                                    });
+                                    self.blocks_with_errors.insert(name_str.clone());
                                 }
+                            } else {
+                                // Invalid action type format (missing ::)
+                                let (line, col) = self.optional_span_to_position(action_type.span());
+                                self.primary_errors.push(DoctorError {
+                                    message: format!("Invalid action type '{}' - must be in format 'namespace::action'", type_str),
+                                    file: self.file_path.clone(),
+                                    line: if line > 0 { Some(line) } else { None },
+                                    column: if col > 0 { Some(col) } else { None },
+                                    context: Some("Action types must include the namespace, e.g., 'evm::send_eth'".to_string()),
+                                    documentation_link: None,
+                                });
+                                self.blocks_with_errors.insert(name_str.clone());
+                            }
+                        } else {
+                            // Skip validation if this block already has errors from collection phase
+                            if self.blocks_with_errors.contains(&name_str) {
+                                return;
                             }
                         }
                     }
@@ -260,8 +358,8 @@ impl<'a> HclValidationVisitor<'a> {
                             context: Some("Make sure the action is defined before using it".to_string()),
                             documentation_link: None,
                         });
-                    } else if parts.len() >= 3 {
-                        // Validate field access
+                    } else if parts.len() >= 3 && !self.blocks_with_errors.contains(action_name) {
+                        // Validate field access only if action doesn't have errors
                         self.validate_action_field_access(action_name, &parts[2], line, col);
                     }
                 }
@@ -352,12 +450,28 @@ impl<'a> HclValidationVisitor<'a> {
         // Pass 2: Validation phase
         self.is_validation_phase = true;
         self.visit_body(body);
+        
+        // Merge primary errors (namespace/type errors) with other errors
+        // Primary errors go first as they're more fundamental
+        let mut all_errors = std::mem::take(&mut self.primary_errors);
+        all_errors.append(&mut self.result.errors);
+        self.result.errors = all_errors;
     }
 }
 
 impl<'a> Visit for HclValidationVisitor<'a> {
     fn visit_block(&mut self, block: &Block) {
         self.process_block(block);
+        
+        // During validation phase, skip blocks that had errors in collection phase
+        if self.is_validation_phase {
+            if let Some(ctx) = &self.current_block {
+                if self.blocks_with_errors.contains(&ctx.name) {
+                    // Skip validation of this block's contents
+                    return;
+                }
+            }
+        }
         
         // Continue visiting the block's contents
         visit_block(self, block);
