@@ -540,6 +540,114 @@ mod tests {
     }
 
     #[test]
+    fn test_unknown_action_type() {
+        let runbook = r#"
+            addon "evm" { 
+                network_id = 1 
+            }
+            
+            action "deploy" "evm::deploy" { 
+                value = "1000" 
+            }
+            
+            output "result" { 
+                value = action.deploy.tx_hash 
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        assert_eq!(result.errors.len(), 1, "Expected 1 error for unknown action type");
+        
+        let error = &result.errors[0];
+        assert!(error.message.contains("Unknown action type 'evm::deploy'"));
+        assert!(error.message.contains("Available actions for 'evm':"));
+        assert!(error.message.contains("evm::deploy_contract"));
+        assert!(error.context.as_ref().unwrap().contains("Did you mean 'evm::deploy_contract'?"));
+    }
+
+    #[test]
+    fn test_unknown_namespace() {
+        let runbook = r#"
+            action "test" "unknown::action" { 
+                value = "1000" 
+            }
+            
+            output "result" { 
+                value = action.test.result 
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        assert_eq!(result.errors.len(), 1, "Expected 1 error for unknown namespace");
+        
+        let error = &result.errors[0];
+        assert!(error.message.contains("Unknown addon namespace 'unknown'"));
+        assert!(error.message.contains("Available namespaces:"));
+        assert!(error.message.contains("evm"));
+    }
+
+    #[test]
+    fn test_invalid_action_type_format() {
+        let runbook = r#"
+            action "test" "invalid_format" { 
+                value = "1000" 
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        assert_eq!(result.errors.len(), 1, "Expected 1 error for invalid format");
+        
+        let error = &result.errors[0];
+        assert!(error.message.contains("Invalid action type 'invalid_format'"));
+        assert!(error.message.contains("must be in format 'namespace::action'"));
+    }
+
+    #[test]
+    fn test_cascading_errors_suppressed() {
+        let runbook = r#"
+            addon "evm" { 
+                network_id = 1 
+            }
+            
+            # Invalid action type
+            action "test" "unknown::action" { 
+                value = "1000" 
+            }
+            
+            # This should NOT generate additional errors
+            output "out1" { 
+                value = action.test.field1 
+            }
+            
+            output "out2" { 
+                value = action.test.field2.nested 
+            }
+            
+            # Valid action - should still validate
+            action "valid" "evm::send_eth" { 
+                to = "0x123"
+                amount = "1000"
+            }
+            
+            # This SHOULD generate an error
+            output "out3" { 
+                value = action.valid.invalid_field 
+            }
+        "#;
+
+        let result = validate_fixture(runbook);
+        
+        // Should have 2 errors: unknown namespace + invalid field on valid action
+        assert_eq!(result.errors.len(), 2, "Expected 2 errors total");
+        
+        // Check that we have one primary error (unknown namespace)
+        assert!(result.errors[0].message.contains("Unknown addon namespace"));
+        
+        // And one secondary error (invalid field)
+        assert!(result.errors[1].message.contains("Field 'invalid_field' does not exist"));
+    }
+
+    #[test]
     fn test_missing_input_in_environment() {
         use txtx_core::manifest::WorkspaceManifest;
         use txtx_addon_kit::indexmap::IndexMap;

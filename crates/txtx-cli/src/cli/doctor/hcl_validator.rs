@@ -54,12 +54,6 @@ pub struct HclValidationVisitor<'a> {
     blocks_with_errors: HashSet<String>,
     /// Primary errors (namespace/type errors) to report first
     primary_errors: Vec<DoctorError>,
-    
-    // === Error Tracking ===
-    /// Blocks that have errors (to skip in validation phase)
-    blocks_with_errors: HashSet<String>,
-    /// Primary errors (namespace/type errors) to report first
-    primary_errors: Vec<DoctorError>,
 }
 
 #[derive(Clone, Debug)]
@@ -85,8 +79,6 @@ impl<'a> HclValidationVisitor<'a> {
             current_block: None,
             is_validation_phase: false,
             input_refs: Vec::new(),
-            blocks_with_errors: HashSet::new(),
-            primary_errors: Vec::new(),
             blocks_with_errors: HashSet::new(),
             primary_errors: Vec::new(),
         }
