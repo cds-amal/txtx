@@ -1,4 +1,5 @@
 mod backend;
+mod functions;
 
 use lsp_server::{Connection, Message, Request, Response};
 use lsp_types::{

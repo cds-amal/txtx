@@ -26,3 +26,10 @@ addons/evm/fixtures/kitchenSink/output.json
 addons/evm/generated_deployment.tx
 addons/evm/test_problematic.tx
 test_parser_simple.tx
+
+# Test artifacts and outputs
+tests/**/*.log
+tests/**/*.tmp
+tests/**/*.out
+tests/integration/target/
+*.test.tx

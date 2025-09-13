@@ -639,6 +639,45 @@
   ],
   "svm": [
     {
+      "id": "sign_transaction",
+      "name": "Sign SVM Transaction",
+      "documentation": "The `svm::send_transaction` is used to sign a transaction and broadcast it to the specified SVM-compatible network.",
+      "inputs": [
+        {
+          "name": "description",
+          "documentation": "A description of the transaction.",
+          "typing": "string",
+          "optional": true
+        },
+        {
+          "name": "transaction_bytes",
+          "documentation": "The transaction bytes to sign.",
+          "typing": "addon(svm::transaction)",
+          "optional": false
+        },
+        {
+          "name": "signers",
+          "documentation": "A set of references to signer constructs, which will be used to sign the transaction.",
+          "typing": "array[string]",
+          "optional": true
+        },
+        {
+          "name": "signer",
+          "documentation": "A reference to a signer construct, which will be used to sign the transaction.",
+          "typing": "array[string]",
+          "optional": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "signed_transaction_bytes",
+          "documentation": "The signed transaction bytes.",
+          "typing": "addon(svm::transaction)"
+        }
+      ],
+      "example": "// Coming soon\n"
+    },
+    {
       "id": "process_instructions",
       "name": "Process SVM Instructions",
       "documentation": "The `svm::process_instructions` action encodes instructions, adds them to a transaction, and signs & broadcasts the transaction.",
@@ -729,24 +768,6 @@
           "documentation": "Whether to auto extend the program account for program upgrades. Defaults to `true`.",
           "typing": "bool",
           "optional": true
-        },
-        {
-          "name": "instant_surfnet_deployment",
-          "documentation": "If set to `true`, deployments to a Surfnet will be instantaneous, deploying via a cheatcode to directly write to the program account, rather than sending transactions. Defaults to `false`.",
-          "typing": "bool",
-          "optional": true
-        },
-        {
-          "name": "ephemeral_authority_secret_key",
-          "documentation": "An optional base-58 encoded keypair string to use as the temporary upgrade authority during deployment. If not provided, a new ephemeral keypair will be generated.",
-          "typing": "string",
-          "optional": true
-        },
-        {
-          "name": "buffer_account_pubkey",
-          "documentation": "The public key of the buffer account to use to continue a failed deployment.",
-          "typing": "string",
-          "optional": true
         }
       ],
       "outputs": [
@@ -764,11 +785,6 @@
           "name": "program_idl",
           "documentation": "The program ID of the deployed program.",
           "typing": "string"
-        },
-        {
-          "name": "slot",
-          "documentation": "The slot at which the program was deployed.",
-          "typing": "integer"
         }
       ],
       "example": "action \"deploy\" \"svm::deploy_program\" {\n    description = \"Deploy hello world program\"\n    program = svm::get_program_from_anchor_project(\"hello_world\") \n    authority = signer.authority\n    payer = signer.payer  # Optional, defaults to authority\n}\n"
@@ -950,38 +966,20 @@
           "optional": false
         },
         {
-          "name": "slot",
-          "documentation": "The slot to start indexing from.",
-          "typing": "integer",
-          "optional": true
-        },
-        {
           "name": "block_height",
-          "documentation": "Deprecated. Use slot instead.",
+          "documentation": "The block height to start indexing from.",
           "typing": "integer",
-          "optional": true
+          "optional": false
         },
         {
           "name": "event",
           "documentation": "A map of events to index in the subgraph.",
           "typing": "map",
-          "optional": true
-        },
-        {
-          "name": "pda",
-          "documentation": "The PDA account to index in the subgraph",
-          "typing": "map",
-          "optional": true
-        },
-        {
-          "name": "token_account",
-          "documentation": "The token account to index in the subgraph",
-          "typing": "map",
-          "optional": true
+          "optional": false
         }
       ],
       "outputs": [],
-      "example": "action \"transfer_event_subgraph\" \"svm::deploy_subgraph\" {\n    program_id = action.deploy.program_id\n    program_idl = action.deploy.program_idl\n    slot = action.deploy.slot\n    event {\n        name = \"TransferEvent\"\n    }\n}\naction \"account_index\" \"svm::deploy_subgraph\" {\n    program_id = action.deploy.program_id\n    program_idl = action.deploy.program_idl\n    slot = action.deploy.slot\n    pda {\n        type = \"CustomAccount\"\n        instruction {\n            name = \"<instruction-using-this-account>\"\n            account_name = \"<name-of-account-in-instruction>\"\n        }\n        instruction {\n            name = \"<another-instruction-using-this-account>\"\n            account_name = \"<name-of-account-in-instruction>\"\n        }\n    }\n}\n"
+      "example": "action \"transfer_event_subgraph\" \"svm::deploy_subgraph\" {\n    program_id = action.deploy.program_id\n    program_idl = action.deploy.program_idl\n    block_height = action.deploy.block_height\n    event {\n        name = \"TransferEvent\"\n    }\n"
     },
     {
       "id": "setup_surfnet",

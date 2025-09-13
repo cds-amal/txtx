@@ -71,7 +71,7 @@ impl TxtxVsceBridge {
                 };
                 let uri = &params.text_document.uri;
                 if let Some(runbook_location) = get_runbook_location(uri) {
-                    LspNotification::ContractOpened(runbook_location.clone())
+                    LspNotification::RunbookOpened(runbook_location.clone())
                 } else if let Some(manifest_location) = get_manifest_location(uri) {
                     LspNotification::ManifestOpened(manifest_location)
                 } else {
@@ -91,7 +91,7 @@ impl TxtxVsceBridge {
                 let uri = &params.text_document.uri;
 
                 if let Some(runbook_location) = get_runbook_location(uri) {
-                    LspNotification::ContractSaved(runbook_location)
+                    LspNotification::RunbookSaved(runbook_location)
                 } else if let Some(manifest_location) = get_manifest_location(uri) {
                     LspNotification::ManifestSaved(manifest_location)
                 } else {
@@ -113,7 +113,7 @@ impl TxtxVsceBridge {
                 let uri = &params.text_document.uri;
 
                 if let Some(runbook_location) = get_runbook_location(uri) {
-                    LspNotification::ContractChanged(
+                    LspNotification::RunbookChanged(
                         runbook_location,
                         params.content_changes[0].text.to_string(),
                     )
@@ -132,7 +132,7 @@ impl TxtxVsceBridge {
                 let uri = &params.text_document.uri;
 
                 if let Some(runbook_location) = get_runbook_location(uri) {
-                    LspNotification::ContractClosed(runbook_location)
+                    LspNotification::RunbookClosed(runbook_location)
                 } else {
                     return Promise::resolve(&JsValue::FALSE);
                 }

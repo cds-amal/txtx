@@ -13,6 +13,9 @@ use lsp_types::{
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+// Import function and action hover generation from the functions module
+use super::functions::{get_function_hover, get_action_hover};
+
 /// Represents the state of a single document
 #[derive(Debug, Clone)]
 struct Document {
@@ -243,6 +246,36 @@ impl TxtxLspBackend {
         let state = self.state.read().unwrap();
         let content = state.get_document(&uri)?;
         
+        // First check if it's a function call or action
+        if let Some(identifier) = extract_function_or_action(content, &position) {
+            eprintln!("[hover] Found identifier: {}", identifier);
+            
+            // Try as function first
+            if let Some(hover_text) = get_function_hover(&identifier) {
+                eprintln!("[hover] Found function documentation");
+                return Some(Hover {
+                    contents: lsp_types::HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: hover_text,
+                    }),
+                    range: None,
+                });
+            }
+            
+            // Then try as action
+            if let Some(hover_text) = get_action_hover(&identifier) {
+                eprintln!("[hover] Found action documentation");
+                return Some(Hover {
+                    contents: lsp_types::HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: hover_text,
+                    }),
+                    range: None,
+                });
+            }
+        }
+        
+        // Then check if it's an input reference
         if let Some(var_name) = extract_input_reference(content, &position) {
             // Look up the variable value
             if let Some(manifest) = state.get_manifest_for_runbook(&uri) {
@@ -430,6 +463,59 @@ fn find_manifest_for_runbook(runbook_uri: &Url) -> Result<Url, String> {
     }
     
     Err("No manifest found".to_string())
+}
+
+/// Extract a function call or action identifier at the given position (e.g., "evm::get_contract_from_foundry_project" or "evm::call_contract")
+fn extract_function_or_action(content: &str, position: &Position) -> Option<String> {
+    let lines: Vec<&str> = content.lines().collect();
+    let line = lines.get(position.line as usize)?;
+    
+    let chars: Vec<char> = line.chars().collect();
+    if position.character as usize >= chars.len() {
+        return None;
+    }
+    
+    let mut start = position.character as usize;
+    let mut end = position.character as usize;
+    
+    // Find start of identifier (including namespace::function format)
+    while start > 0 {
+        let prev_char = chars.get(start - 1)?;
+        if prev_char.is_alphanumeric() || *prev_char == '_' {
+            start -= 1;
+        } else if start >= 2 && *prev_char == ':' && *chars.get(start - 2)? == ':' {
+            // Skip over :: as a unit
+            start -= 2;
+        } else {
+            break;
+        }
+    }
+    
+    // Find end of identifier
+    while end < chars.len() {
+        let curr_char = chars.get(end)?;
+        if curr_char.is_alphanumeric() || *curr_char == '_' {
+            end += 1;
+        } else if end + 1 < chars.len() && *curr_char == ':' && *chars.get(end + 1)? == ':' {
+            // Skip over :: as a unit
+            end += 2;
+        } else {
+            break;
+        }
+    }
+    
+    if start >= end {
+        return None;
+    }
+    
+    let identifier: String = chars[start..end].iter().collect();
+    
+    // Check if it looks like a function call (contains ::)
+    if identifier.contains("::") {
+        Some(identifier)
+    } else {
+        None
+    }
 }
 
 fn extract_input_reference(content: &str, position: &Position) -> Option<String> {

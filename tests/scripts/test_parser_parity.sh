@@ -79,8 +79,11 @@ test_treesitter_parse() {
     echo -n "Testing $name... "
     
     # Check if we can use npx tree-sitter in the grammar directory
-    if [ -f /home/amal/dev/tx/txtx/crates/tree-sitter-txtx/package.json ]; then
-        cd /home/amal/dev/tx/txtx/crates/tree-sitter-txtx
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    
+    if [ -f "$PROJECT_ROOT/crates/tree-sitter-txtx/package.json" ]; then
+        cd "$PROJECT_ROOT/crates/tree-sitter-txtx"
         if npx tree-sitter parse "$file" &> /dev/null; then
             echo "✅ PASS"
             return 0
@@ -92,7 +95,7 @@ test_treesitter_parse() {
         # Fallback: just check if the grammar would theoretically support it
         # by grepping for the construct in the grammar file
         local construct=$(echo $name | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
-        if grep -q "${construct}:" /home/amal/dev/tx/txtx/crates/tree-sitter-txtx/grammar.js 2>/dev/null; then
+        if grep -q "${construct}:" "$PROJECT_ROOT/crates/tree-sitter-txtx/grammar.js" 2>/dev/null; then
             echo "✅ Grammar supports $name"
             return 0
         else

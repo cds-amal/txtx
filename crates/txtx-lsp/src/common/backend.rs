@@ -341,14 +341,38 @@ pub fn process_request(
 
         LspRequest::Hover(params) => {
             let file_url = params.text_document_position_params.text_document.uri;
+            
+            #[cfg(debug_assertions)]
+            eprintln!("LSP: Hover request for URL: {}", file_url);
+            
             let runbook_location = match get_runbook_location(&file_url) {
                 Some(runbook_location) => runbook_location,
-                None => return Ok(LspRequestResponse::Hover(None)),
+                None => {
+                    #[cfg(debug_assertions)]
+                    eprintln!("LSP: Not a runbook file (no .tx extension?)");
+                    return Ok(LspRequestResponse::Hover(None));
+                }
             };
+            
+            #[cfg(debug_assertions)]
+            eprintln!("LSP: Runbook location: {:?}", runbook_location);
+            
             let position = params.text_document_position_params.position;
+            
+            #[cfg(debug_assertions)]
+            eprintln!("LSP: Hover position: {:?}", position);
+            
             let hover_data = editor_state
                 .try_read(|es| es.get_hover_data(&runbook_location, &position))
-                .unwrap_or_default();
+                .unwrap_or_else(|e| {
+                    #[cfg(debug_assertions)]
+                    eprintln!("LSP: Error getting hover data: {}", e);
+                    None
+                });
+                
+            #[cfg(debug_assertions)]
+            eprintln!("LSP: Hover response: {}", if hover_data.is_some() { "Some" } else { "None" });
+            
             Ok(LspRequestResponse::Hover(hover_data))
         }
         _ => Err(format!("Unexpected command: {:?}", &command)),

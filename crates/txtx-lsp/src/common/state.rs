@@ -511,27 +511,25 @@ impl EditorState {
 
     pub fn get_hover_data(
         &self,
-        _runbook_location: &FileLocation,
-        _position: &lsp_types::Position,
+        runbook_location: &FileLocation,
+        position: &lsp_types::Position,
     ) -> Option<Hover> {
-        // let runbook = self.active_runbooks.get(runbook_location)?;
-        // let position = Position {
-        //     line: position.line + 1,
-        //     character: position.character + 1,
-        // };
-        // let documentation = get_expression_documentation(
-        //     &position,
-        //     contract.clarity_version,
-        //     contract.expressions.as_ref()?,
-        // )?;
-
-        Some(Hover {
-            contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
-                kind: lsp_types::MarkupKind::Markdown,
-                value: "hover".to_string(),
-            }),
-            range: None,
-        })
+        #[cfg(debug_assertions)]
+        eprintln!("LSP: get_hover_data called for {:?} at {:?}", runbook_location, position);
+        
+        // Get the runbook content
+        let runbook = self.active_runbooks.get(runbook_location)?;
+        
+        #[cfg(debug_assertions)]
+        eprintln!("LSP: Found runbook with {} bytes of content", runbook.source.len());
+        
+        // Use the hover module to generate hover information
+        let result = crate::common::hover::generate_hover_info(&runbook.source, position);
+        
+        #[cfg(debug_assertions)]
+        eprintln!("LSP: Hover result: {}", if result.is_some() { "Some" } else { "None" });
+        
+        result
     }
 
     pub fn get_signature_help(

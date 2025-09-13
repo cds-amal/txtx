@@ -1,0 +1,12 @@
+addon "evm" {
+    rpc_api_url = "https://eth.example.com"
+}
+
+// Test hover on this function
+variable "contract" {
+    value = evm::get_contract_from_foundry_project("MyContract")
+}
+
+action "deploy" "evm::deploy_contract" {
+    contract = variable.contract
+}
