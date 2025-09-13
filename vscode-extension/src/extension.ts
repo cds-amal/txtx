@@ -18,61 +18,75 @@ export async function activate(context: vscode.ExtensionContext) {
   
   // Get the LSP path from configuration or use defaults
   const config = vscode.workspace.getConfiguration('txtx');
-  const configuredPath = config.get<string>('lspPath');
+  let configuredPath = config.get<string>('lspPath');
   
   let serverCommand: string = 'txtx'; // Default to system txtx
   
+  // Handle VSCode variable substitution
   if (configuredPath && configuredPath.length > 0) {
-    serverCommand = configuredPath;
-    outputChannel.appendLine(`Using configured LSP path: ${serverCommand}`);
-  } else {
-    // For development: Try common development paths first
-    // These will work when developing locally but won't affect production
-    const devPaths = [
-      '/home/amal/dev/tx/txtx/target/release/txtx',
-      '/home/amal/dev/tx/txtx/target/debug/txtx',
-    ];
-    
-    let found = false;
-    for (const devBinary of devPaths) {
-      if (fs.existsSync(devBinary)) {
-        serverCommand = devBinary;
-        outputChannel.appendLine(`Using development binary: ${serverCommand}`);
-        found = true;
-        break;
-      }
+    // Replace ${workspaceFolder} with actual path
+    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+      const workspaceFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      configuredPath = configuredPath.replace('${workspaceFolder}', workspaceFolder);
     }
     
-    if (!found) {
-      // Check environment variable
-      const envPath = process.env.TXTX_LSP_PATH;
-      if (envPath && fs.existsSync(envPath)) {
-        serverCommand = envPath;
-        outputChannel.appendLine(`Using TXTX_LSP_PATH: ${serverCommand}`);
-        found = true;
-      }
+    if (fs.existsSync(configuredPath)) {
+      serverCommand = configuredPath;
+      outputChannel.appendLine(`Using configured LSP path: ${serverCommand}`);
+    } else {
+      outputChannel.appendLine(`Configured path not found: ${configuredPath}, falling back to auto-detection`);
+      configuredPath = ''; // Clear to trigger auto-detection
     }
-    
-    if (!found) {
-      // Try relative paths (when running from source)
+  }
+  
+  if (!configuredPath || configuredPath.length === 0) {
+    // Check environment variable first
+    const envPath = process.env.TXTX_LSP_PATH;
+    if (envPath && fs.existsSync(envPath)) {
+      serverCommand = envPath;
+      outputChannel.appendLine(`Using TXTX_LSP_PATH: ${serverCommand}`);
+    } else {
+      // Try relative paths (when running from source with F5 in VSCode)
+      const extensionRoot = path.join(__dirname, '..');
+      const projectRoot = path.join(extensionRoot, '..');
       const relativePaths = [
-        path.join(__dirname, '..', '..', 'target', 'release', 'txtx'),
-        path.join(__dirname, '..', '..', 'target', 'debug', 'txtx'),
+        path.join(projectRoot, 'target', 'release', 'txtx'),
+        path.join(projectRoot, 'target', 'debug', 'txtx'),
       ];
       
+      let found = false;
       for (const relBinary of relativePaths) {
         if (fs.existsSync(relBinary)) {
           serverCommand = relBinary;
-          outputChannel.appendLine(`Using relative development binary: ${serverCommand}`);
+          outputChannel.appendLine(`Using project binary: ${serverCommand}`);
           found = true;
           break;
         }
       }
-    }
-    
-    if (!found) {
-      // Already defaulted to 'txtx'
-      outputChannel.appendLine(`Using system txtx from PATH`);
+      
+      if (!found) {
+        // Try workspace folder binary (if workspace contains txtx project)
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+          const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+          const workspacePaths = [
+            path.join(workspaceRoot, 'target', 'release', 'txtx'),
+            path.join(workspaceRoot, 'target', 'debug', 'txtx'),
+          ];
+          
+          for (const wsBinary of workspacePaths) {
+            if (fs.existsSync(wsBinary)) {
+              serverCommand = wsBinary;
+              outputChannel.appendLine(`Using workspace binary: ${serverCommand}`);
+              found = true;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (!found) {
+        outputChannel.appendLine(`Using system txtx from PATH`);
+      }
     }
   }
   const serverArgs = ['lsp'];

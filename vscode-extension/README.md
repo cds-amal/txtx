@@ -28,14 +28,16 @@ cargo build --package txtx-cli --release --no-default-features --features cli
 
 The extension needs to know where to find the txtx executable. You have several options:
 
-#### Option 1: Configure in VSCode Settings (Recommended)
+#### Option 1: Workspace Settings (Recommended for Development)
 
-1. Open VSCode settings (Cmd/Ctrl + ,)
-2. Search for "txtx.lspPath"
-3. Set it to the full path of your txtx binary:
-   ```
-   /path/to/txtx/target/release/txtx
-   ```
+Add to your workspace's `.vscode/settings.json`:
+```json
+{
+  "txtx.lspPath": "${workspaceFolder}/target/release/txtx"
+}
+```
+
+This uses a workspace-relative path that works across different machines.
 
 #### Option 2: Use Environment Variable
 
