@@ -12,7 +12,8 @@ fn test_doctor_fixtures() {
         ("test_doctor_valid.tx", true, 0, "Valid runbook should pass"),
         ("test_doctor_simple.tx", false, 2, "Should find undefined signer and invalid field"),
         ("test_doctor_two_pass.tx", false, 1, "Should find undefined action reference"),
-        ("test_doctor_bad_flow_detection.tx", false, 1, "Should find unknown action type"),
+        ("test_doctor_unknown_action_type.tx", false, 1, "Should find unknown action type"),
+        ("test_doctor_flow_missing_variable.tx", false, 1, "Should find undefined flow variable"),
         ("test_doctor_errors.tx", false, -1, "Should find multiple errors"), // -1 means any number
     ];
     
@@ -72,7 +73,7 @@ fn test_doctor_fixture_specific_errors() {
     let fixtures_dir = Path::new("tests/fixtures/doctor");
     
     // Test bad flow detection
-    let bad_flow_path = fixtures_dir.join("test_doctor_bad_flow_detection.tx");
+    let bad_flow_path = fixtures_dir.join("test_doctor_unknown_action_type.tx");
     if bad_flow_path.exists() {
         let output = Command::new(env!("CARGO_BIN_EXE_txtx"))
             .arg("doctor")
@@ -93,5 +94,29 @@ fn test_doctor_fixture_specific_errors() {
             msg.contains("Unknown action type") && msg.contains("evm::deploy")
         });
         assert!(has_deploy_error, "Should detect unknown action type 'evm::deploy'");
+    }
+    
+    // Test flow missing variable detection
+    let flow_missing_var_path = fixtures_dir.join("test_doctor_flow_missing_variable.tx");
+    if flow_missing_var_path.exists() {
+        let output = Command::new(env!("CARGO_BIN_EXE_txtx"))
+            .arg("doctor")
+            .arg(&flow_missing_var_path)
+            .arg("--format")
+            .arg("json")
+            .output()
+            .expect("Failed to run doctor");
+        
+        let json: serde_json::Value = serde_json::from_str(&String::from_utf8_lossy(&output.stdout))
+            .expect("Failed to parse JSON");
+        
+        let errors = json["errors"].as_array().expect("Expected errors array");
+        
+        // Should detect undefined flow.chain_id
+        let has_flow_error = errors.iter().any(|e| {
+            let msg = e["message"].as_str().unwrap_or("");
+            msg.contains("flow.chain_id") || msg.contains("undefined")
+        });
+        assert!(has_flow_error, "Should detect undefined flow.chain_id");
     }
 }

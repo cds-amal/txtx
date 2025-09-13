@@ -1,0 +1,26 @@
+# Test file for unknown action type detection in doctor command
+
+# Valid variable definition
+variable "base_fee" {
+    value = 1000000000
+}
+
+# Valid signer using input
+signer "deployer" "evm::secret_key" {
+    secret_key = input.private_key
+}
+
+# This should error - undefined variable
+action "deploy" "evm::deploy" {
+    signer = signer.deployer
+    fee = variable.base_fee  # OK: defined variable
+}
+
+# This should work - valid action output
+output "tx_hash" {
+    value = action.deploy.tx_hash  # OK: tx_hash is valid output
+}
+
+output "output3" {
+    value = "test"
+}

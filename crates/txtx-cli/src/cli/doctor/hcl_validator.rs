@@ -386,6 +386,26 @@ impl<'a> HclValidationVisitor<'a> {
                     }
                 }
             }
+            "flow" => {
+                if parts.len() >= 2 {
+                    let attr_name = &parts[1];
+                    // Check if flow attributes exist
+                    let flow_exists = self.flow_inputs.values().any(|inputs| {
+                        inputs.contains(&attr_name.to_string())
+                    });
+                    
+                    if !flow_exists {
+                        self.result.errors.push(DoctorError {
+                            message: format!("Reference to undefined flow attribute 'flow.{}'", attr_name),
+                            file: self.file_path.clone(),
+                            line: if line > 0 { Some(line) } else { None },
+                            column: if col > 0 { Some(col) } else { None },
+                            context: Some("Make sure the flow defines this attribute".to_string()),
+                            documentation_link: None,
+                        });
+                    }
+                }
+            }
             "output" => {
                 // Output references need ordering validation
                 if parts.len() >= 2 {

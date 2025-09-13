@@ -1,0 +1,27 @@
+# Test file for flow validation - missing required variable
+
+addon "evm" {}
+
+# Flow is missing 'chain_id' which is required by the action
+flow "mainnet" {
+    description = "Production environment"
+    rpc_url = "https://eth-mainnet.g.alchemy.com/v2/demo"
+    # Missing: chain_id = 1
+}
+
+# Valid signer
+signer "deployer" "evm::secret_key" {
+    secret_key = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}
+
+# This action requires flow.chain_id which is not defined in the flow
+action "deploy" "evm::deploy_contract" {
+    signer = signer.deployer
+    chain_id = flow.chain_id  # ERROR: chain_id not defined in flow
+    rpc_url = flow.rpc_url
+    contract = "Counter"
+}
+
+output "contract_address" {
+    value = action.deploy.contract_address
+}
