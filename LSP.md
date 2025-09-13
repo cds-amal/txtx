@@ -14,6 +14,7 @@ The txtx LSP provides IDE support for txtx runbook files (`.tx`) and manifest fi
    - Uses `lsp-server` crate for protocol handling (same as rust-analyzer)
    - No async runtime overhead - purely synchronous for better performance
    - Direct integration - no separate crate needed (see ADR-001)
+   - **Parser**: Uses `hcl-edit` (same as txtx-core) for all parsing
 
 2. **`vscode-extension`** - VSCode client extension
    - Connects VSCode to the txtx LSP server

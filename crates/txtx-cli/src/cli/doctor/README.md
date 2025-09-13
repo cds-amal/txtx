@@ -37,10 +37,11 @@ Main implementation containing:
 - `check_output_field_exists()` - Verifies action outputs exist
 - `display_results()` - Formats output based on selected format (pretty/quickfix/json)
 
-#### `parser_validator.rs`
-Visitor-pattern based validation using the AST:
-- `ValidationVisitor` - Traverses the runbook AST collecting validation data
+#### `hcl_validator.rs`
+HCL-based validation using hcl-edit's visitor pattern:
+- `HclValidationVisitor` - Traverses the HCL structure collecting validation data
 - `LocatedInputRef` - Tracks input references with their source locations
+- Two-pass validation: First collects definitions, then validates references
 - Validates action output field access against addon specifications
 
 ### Key Features
@@ -72,16 +73,17 @@ Visitor-pattern based validation using the AST:
 ## Implementation Details
 
 ### Parser Integration
-Uses `txtx-parser` (tree-sitter based) to:
-- Parse runbook files into AST
+Uses `hcl-edit` (same parser as txtx-core) to:
+- Parse runbook files into HCL structure
 - Extract all references (input.*, action.*, signer.*, etc.)
 - Traverse nested expressions in outputs
-- Visitor pattern implementation for complete AST coverage
+- Visitor pattern implementation for complete structure coverage
+- Two-pass validation to handle forward references
 
 ### Location Tracking
-The doctor now provides precise error locations:
-- `ValidationVisitor` collects input references during AST traversal
-- `find_input_location()` searches source text for exact line/column
+The doctor provides precise error locations:
+- `HclValidationVisitor` collects input references during HCL traversal
+- Span information from hcl-edit converted to line/column positions
 - All errors include file:line:column for editor navigation
 - Compatible with Vim/Neovim quickfix and similar editor features
 

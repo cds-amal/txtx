@@ -3,7 +3,7 @@
 ## What We Fully Implemented
 
 ### 1. **Proper Parser Integration** ✅
-   - Integrated with tree-sitter based txtx-parser for full AST analysis
+   - Integrated with hcl-edit parser (same as txtx-core) for consistency
    - No more fragile pattern matching - uses actual runbook structure
    - Validates the same way the runtime does
 

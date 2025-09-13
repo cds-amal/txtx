@@ -13,8 +13,6 @@ members = [
     "crates/txtx-addon-kit",
     "crates/txtx-cloud",
     "crates/txtx-lsp",
-    "crates/txtx-parser",
-    "crates/tree-sitter-txtx",
     "crates/txtx-supervisor-ui",
     "crates/txtx-serve",
     "addons/bitcoin",
@@ -38,7 +36,6 @@ txtx-core = { path = "crates/txtx-core", default-features = false }
 txtx-addon-kit = { path = "crates/txtx-addon-kit", default-features = false }
 txtx-cloud = { path = "crates/txtx-cloud" }
 txtx-gql = { path = "crates/txtx-gql" }
-txtx-parser = { path = "crates/txtx-parser" }
 txtx-supervisor-ui = { path = "crates/txtx-supervisor-ui" }
 txtx-serve = { path = "crates/txtx-serve" }
 txtx-addon-network-evm = { path = "addons/evm" }
@@ -49,3 +46,4 @@ txtx-addon-network-svm = { path = "addons/svm/core" }
 txtx-addon-telegram = { path = "addons/telegram" }
 txtx-addon-sp1 = { path = "addons/sp1" }
 uuid = { version = "1.15.1", features = ["v4", "serde", "js"] }
+

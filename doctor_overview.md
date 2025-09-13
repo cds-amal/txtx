@@ -40,12 +40,9 @@ Once a runbook file is found:
 // In analyze_runbook_with_context()
 let content = std::fs::read_to_string(path)?;
 
-// Parse the runbook using tree-sitter parser
-match parse(content) {
-    Ok(runbook) => {
-        // Use visitor pattern for validation
-        parser_validator::validate_with_visitor(&runbook, &mut result, file_path);
-        
+// Parse the runbook using hcl-edit parser
+match hcl_validator::validate_with_hcl(content, &mut result, file_path) {
+    Ok(input_refs) => {
         // If manifest provided, validate inputs
         if let Some(manifest) = manifest {
             validate_inputs_against_manifest(...);
