@@ -61,7 +61,9 @@
     "compile-tests": "tsc -p ./tsconfig.test.json",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile-tests",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "package": "npm run compile && vsce package --allow-missing-repository",
+    "build": "npm run package"
   },
   "keywords": [
     "txtx",
