@@ -49,7 +49,11 @@
         },
         "txtx.trace.server": {
           "type": "string",
-          "enum": ["off", "messages", "verbose"],
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
         }
@@ -57,7 +61,7 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
+    "compile": "node build.js",
     "compile-tests": "tsc -p ./tsconfig.test.json",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile-tests",
@@ -86,6 +90,7 @@
     "@types/node": "^24.3.1",
     "@types/vscode": "^1.103.0",
     "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.9",
     "glob": "^10.4.5",
     "mocha": "^11.7.2",
     "typescript": "^5.9.2"
