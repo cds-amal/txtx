@@ -1,9 +1,13 @@
+// Expected errors: 2
+// 1. Undefined signer: signer.undefined_signer
+// 2. Invalid field access: action.send.from (send_eth has no 'from' output)
+
 action "send" "evm::send_eth" {
-    signer = signer.undefined_signer
+    signer = signer.undefined_signer  // ERROR: signer not defined
     to = "0x123"
     value = "1000"
 }
 
 output "bad" {
-    value = action.send.from
+    value = action.send.from  // ERROR: send_eth only outputs 'tx_hash'
 }

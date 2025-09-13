@@ -1,4 +1,8 @@
 // Test file with intentional errors
+// Expected errors: 3
+// 1. Undefined signer: signer.missing_signer (line 10)
+// 2. Undefined action: action.nonexistent (line 18)
+// 3. Invalid field: action.send_eth.invalid_field (line 23)
 
 addon "evm" {
     rpc_api_url = "https://eth.llamarpc.com"
