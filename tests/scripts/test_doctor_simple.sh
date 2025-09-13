@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 echo "=== Testing txtx doctor command ==="
 echo ""
 echo "The doctor command is designed to validate runbook configurations"
@@ -15,8 +18,14 @@ echo "To demonstrate the concept, let's show what it WOULD output"
 echo "for the send_eth issue that cost 2 hours of debugging:"
 echo ""
 
-# Run the demo script that shows the expected output
-/Users/amal/dev/tx/txtx/addons/evm/fixtures/doctor_demo/doctor_demo.sh
+# Run the demo script if it exists
+DEMO_SCRIPT="$PROJECT_ROOT/addons/evm/fixtures/doctor_demo/doctor_demo.sh"
+if [ -f "$DEMO_SCRIPT" ]; then
+    "$DEMO_SCRIPT"
+else
+    echo "Demo script not found at: $DEMO_SCRIPT"
+    echo "Skipping demo output"
+fi
 
 echo ""
 echo "=== How to fully integrate doctor command ==="
