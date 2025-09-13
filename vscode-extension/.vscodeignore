@@ -14,3 +14,4 @@ nvim-txtx/**
 test-headless.sh
 *.vsix
 .github/**
+test-syntax.tx

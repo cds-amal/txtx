@@ -16,12 +16,21 @@
           ".tx"
         ],
         "aliases": [
-          "txtx"
+          "txtx",
+          "Txtx"
         ],
         "filenames": [
           "txtx.yml",
           "txtx.yaml"
-        ]
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "txtx",
+        "scopeName": "source.txtx",
+        "path": "./syntaxes/txtx.tmLanguage.json"
       }
     ],
     "commands": [

@@ -273,25 +273,7 @@ export async function activate(context: vscode.ExtensionContext) {
     statusBarItem.tooltip = `Failed to start: ${error}`;
   }
 
-  // Register file type associations
-  vscode.languages.setLanguageConfiguration('txtx', {
-    comments: {
-      lineComment: '//',
-      blockComment: ['/*', '*/']
-    },
-    brackets: [
-      ['{', '}'],
-      ['[', ']'],
-      ['(', ')']
-    ],
-    autoClosingPairs: [
-      { open: '{', close: '}' },
-      { open: '[', close: ']' },
-      { open: '(', close: ')' },
-      { open: '"', close: '"' },
-      { open: "'", close: "'" },
-    ]
-  });
+  // Language configuration is now defined in language-configuration.json
 }
 
 export function deactivate(): Thenable<void> | undefined {
