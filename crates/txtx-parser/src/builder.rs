@@ -119,7 +119,7 @@ pub struct SignerBuilder {
 
 impl SignerBuilder {
     fn new(parent: RunbookBuilder, name: String, signer_type: String) -> Self {
-        Self { parent, signer: SignerBlock { name, signer_type, attributes: HashMap::new() } }
+        Self { parent, signer: SignerBlock { name, signer_type, attributes: HashMap::new(), source_location: None } }
     }
 
     pub fn secret_key(self, value: Expression) -> Self {
@@ -145,7 +145,7 @@ pub struct ActionBuilder {
 
 impl ActionBuilder {
     fn new(parent: RunbookBuilder, name: String, action_type: String) -> Self {
-        Self { parent, action: ActionBlock { name, action_type, attributes: HashMap::new() } }
+        Self { parent, action: ActionBlock { name, action_type, attributes: HashMap::new(), source_location: None } }
     }
 
     pub fn attr(mut self, key: &str, value: Expression) -> Self {
@@ -256,7 +256,7 @@ pub struct OutputBuilder {
 
 impl OutputBuilder {
     fn new(parent: RunbookBuilder, name: String) -> Self {
-        Self { parent, output: OutputBlock { name, attributes: HashMap::new() } }
+        Self { parent, output: OutputBlock { name, attributes: HashMap::new(), source_location: None } }
     }
 
     pub fn value(self, expr: Expression) -> Self {

@@ -3,6 +3,13 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Simple source location tracking
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SourceLocation {
+    pub line: usize,    // 0-based line number
+    pub column: usize,  // 0-based column number
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Runbook {
     pub addons: Vec<AddonBlock>,
@@ -41,6 +48,8 @@ pub struct SignerBlock {
     pub name: String,
     pub signer_type: String,
     pub attributes: HashMap<String, Expression>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub source_location: Option<SourceLocation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -48,18 +57,24 @@ pub struct ActionBlock {
     pub name: String,
     pub action_type: String,
     pub attributes: HashMap<String, Expression>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub source_location: Option<SourceLocation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OutputBlock {
     pub name: String,
     pub attributes: HashMap<String, Expression>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub source_location: Option<SourceLocation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VariableDeclaration {
     pub name: String,
     pub attributes: HashMap<String, Expression>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub source_location: Option<SourceLocation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

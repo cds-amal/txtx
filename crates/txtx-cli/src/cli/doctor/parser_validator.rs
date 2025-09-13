@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use txtx_parser::{RunbookVisitor, Expression, ActionBlock, OutputBlock, Runbook, 
-                  FlowBlock, ModuleBlock, RunbookBlock, SignerBlock, VariableDeclaration};
+                  FlowBlock, ModuleBlock, RunbookBlock, SignerBlock, VariableDeclaration, SourceMap};
 use txtx_core::kit::types::commands::CommandSpecification;
 
 use super::{DoctorResult, DoctorError, DoctorSuggestion, get_addon_specifications, get_action_doc_link};
@@ -25,6 +25,8 @@ pub struct ValidationVisitor<'a> {
     result: &'a mut DoctorResult,
     /// Path to the current file being validated
     file_path: String,
+    /// Source map for location tracking
+    source_map: Option<&'a SourceMap>,
     /// Map of action names to their types (built during traversal)
     action_types: HashMap<String, String>,
     /// Map of action names to their specifications
@@ -48,6 +50,8 @@ pub struct ValidationVisitor<'a> {
     definition_order: Vec<(String, String)>,
     /// Current phase: collection (false) or validation (true)
     is_validation_phase: bool,
+    /// Map of construct names to their source locations
+    source_locations: HashMap<String, (usize, usize)>,
 }
 
 impl<'a> ValidationVisitor<'a> {
@@ -55,6 +59,7 @@ impl<'a> ValidationVisitor<'a> {
         Self {
             result,
             file_path: file_path.to_string(),
+            source_map: None,
             action_types: HashMap::new(),
             action_specs: HashMap::new(),
             addon_specs: get_addon_specifications(),
@@ -67,6 +72,7 @@ impl<'a> ValidationVisitor<'a> {
             defined_signers: HashMap::new(),
             definition_order: Vec::new(),
             is_validation_phase: false,
+            source_locations: HashMap::new(),
         }
     }
 
@@ -208,11 +214,17 @@ impl<'a> ValidationVisitor<'a> {
         if parts.len() >= 2 {
             let signer_name = &parts[1];
             if !self.defined_signers.contains_key(signer_name) {
+                // Try to get location of the current block being validated
+                let (line, column) = self.source_locations
+                    .get(&format!("{}.{}", self.current_block_type, self.current_block_name))
+                    .copied()
+                    .unwrap_or((0, 0));
+                    
                 self.result.errors.push(DoctorError {
                     message: format!("Reference to undefined signer '{}'", signer_name),
                     file: self.file_path.clone(),
-                    line: None,
-                    column: None,
+                    line: if line > 0 { Some(line) } else { None },
+                    column: if column > 0 { Some(column) } else { None },
                     context: Some("Signers must be defined before they can be referenced".to_string()),
                     documentation_link: None,
                 });
@@ -329,11 +341,17 @@ impl<'a> ValidationVisitor<'a> {
                     }
                 }
             } else {
+                // Try to get location of the current block being validated
+                let (line, column) = self.source_locations
+                    .get(&format!("{}.{}", self.current_block_type, self.current_block_name))
+                    .copied()
+                    .unwrap_or((0, 0));
+                
                 self.result.errors.push(DoctorError {
                     message: format!("Reference to undefined action '{}'", action_name),
                     file: self.file_path.clone(),
-                    line: None,
-                    column: None,
+                    line: if line > 0 { Some(line) } else { None },
+                    column: if column > 0 { Some(column) } else { None },
                     context: Some("Make sure the action is defined before using it in outputs".to_string()),
                     documentation_link: None,
                 });
@@ -375,12 +393,25 @@ impl<'a> RunbookVisitor for ValidationVisitor<'a> {
         for signer in &runbook.signers {
             self.definition_order.push(("signer".to_string(), signer.name.clone()));
             self.defined_signers.insert(signer.name.clone(), signer.signer_type.clone());
+            if let Some(loc) = &signer.source_location {
+                self.source_locations.insert(
+                    format!("signer.{}", signer.name),
+                    (loc.line + 1, loc.column + 1), // Convert to 1-based
+                );
+            }
         }
         
         // Collect action definitions and their specifications
         for action in &runbook.actions {
             self.definition_order.push(("action".to_string(), action.name.clone()));
             self.action_types.insert(action.name.clone(), action.action_type.clone());
+            
+            if let Some(loc) = &action.source_location {
+                self.source_locations.insert(
+                    format!("action.{}", action.name),
+                    (loc.line + 1, loc.column + 1), // Convert to 1-based
+                );
+            }
             
             // Get specification for this action
             let parts: Vec<&str> = action.action_type.split("::").collect();
@@ -400,6 +431,12 @@ impl<'a> RunbookVisitor for ValidationVisitor<'a> {
         // Collect output definitions
         for output in &runbook.outputs {
             self.definition_order.push(("output".to_string(), output.name.clone()));
+            if let Some(loc) = &output.source_location {
+                self.source_locations.insert(
+                    format!("output.{}", output.name),
+                    (loc.line + 1, loc.column + 1), // Convert to 1-based
+                );
+            }
         }
         
         // PASS 2: Now validate all references with complete context
