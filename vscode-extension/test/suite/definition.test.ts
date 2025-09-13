@@ -61,8 +61,13 @@ suite('Go to Definition Tests', () => {
     }
 
     setup(async () => {
-        // Start LSP server - use system tyty
-        lspProcess = spawn('/home/amal/bin/tyty', ['lsp'], {
+        // Start LSP server - use txtx from PATH or development build
+        const path = require('path');
+        const fs = require('fs');
+        const devBinary = path.join(__dirname, '..', '..', '..', 'target', 'debug', 'txtx');
+        const lspCommand = fs.existsSync(devBinary) ? devBinary : 'txtx';
+        
+        lspProcess = spawn(lspCommand, ['lsp'], {
             stdio: 'pipe',
             cwd: fixturesPath
         });

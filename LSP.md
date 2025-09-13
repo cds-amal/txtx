@@ -50,8 +50,7 @@ The txtx LSP provides IDE support for txtx runbook files (`.tx`) and manifest fi
 ### Building the LSP
 
 ```bash
-# Build the txtx binary with LSP support
-cd /home/amal/dev/tx/txtx
+# Build the txtx binary with LSP support (from project root)
 cargo build --package txtx-cli --no-default-features --features cli
 
 # The binary will be at: target/debug/txtx
@@ -233,12 +232,12 @@ cargo test --package txtx-lsp --test backend_tests
 
 1. Check binary exists:
    ```bash
-   ls -la /home/amal/dev/tx/txtx/target/debug/txtx
+   ls -la ./target/debug/txtx
    ```
 
 2. Test manually:
    ```bash
-   /home/amal/dev/tx/txtx/target/debug/txtx lsp
+   ./target/debug/txtx lsp
    ```
 
 3. Check VSCode output panel for errors

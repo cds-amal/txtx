@@ -52,7 +52,17 @@ echo "Running doctor command..."
 echo ""
 
 cd /tmp/doctor_test
-/Users/amal/dev/tx/txtx/target/debug/txtx doctor
+
+# Find txtx binary - use development build if available, otherwise system txtx
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+TXTX_BIN="$PROJECT_ROOT/target/debug/txtx"
+
+if [ ! -f "$TXTX_BIN" ]; then
+    TXTX_BIN="txtx"  # Fall back to system txtx
+fi
+
+"$TXTX_BIN" doctor
 
 echo ""
 echo "Note: The current implementation shows a warning because we're using a dummy manifest parser."

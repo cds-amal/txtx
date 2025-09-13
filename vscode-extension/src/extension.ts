@@ -24,8 +24,10 @@ export async function activate(context: vscode.ExtensionContext) {
     outputChannel.appendLine(`Using configured LSP path: ${serverCommand}`);
   } else {
     // Try development binary first, then system txtx
-    const devBinary = '/home/amal/dev/tx/txtx/target/debug/txtx';
-    if (require('fs').existsSync(devBinary)) {
+    const path = require('path');
+    const fs = require('fs');
+    const devBinary = path.join(__dirname, '..', '..', 'target', 'debug', 'txtx');
+    if (fs.existsSync(devBinary)) {
       serverCommand = devBinary;
       outputChannel.appendLine(`Using development binary: ${serverCommand}`);
     } else {
