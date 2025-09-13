@@ -3,11 +3,13 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Simple source location tracking
+/// Source location tracking with full span information
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceLocation {
-    pub line: usize,    // 0-based line number
-    pub column: usize,  // 0-based column number
+    pub start_line: usize,    // 0-based line number
+    pub start_column: usize,  // 0-based column number  
+    pub end_line: usize,      // 0-based end line
+    pub end_column: usize,    // 0-based end column
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -93,6 +95,13 @@ pub struct ModuleBlock {
 pub struct RunbookBlock {
     pub name: String,
     pub attributes: HashMap<String, Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Located<T> {
+    pub value: T,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub location: Option<SourceLocation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
