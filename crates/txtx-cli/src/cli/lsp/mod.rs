@@ -18,7 +18,14 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
     let (connection, io_threads) = Connection::stdio();
     
     // Wait for the initialize request
-    let (initialize_id, initialize_params) = connection.initialize_start()?;
+    let init_result = connection.initialize_start();
+    let (initialize_id, initialize_params) = match init_result {
+        Ok(params) => params,
+        Err(e) => {
+            eprintln!("Failed to receive initialize request: {:?}", e);
+            return Err(Box::new(e));
+        }
+    };
     
     let initialize_params: InitializeParams = serde_json::from_value(initialize_params)?;
     

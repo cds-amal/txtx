@@ -20,18 +20,58 @@ export async function activate(context: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration('txtx');
   const configuredPath = config.get<string>('lspPath');
   
-  let serverCommand: string;
+  let serverCommand: string = 'txtx'; // Default to system txtx
+  
   if (configuredPath && configuredPath.length > 0) {
     serverCommand = configuredPath;
     outputChannel.appendLine(`Using configured LSP path: ${serverCommand}`);
   } else {
-    // Try development binary first, then system txtx
-    const devBinary = path.join(__dirname, '..', '..', 'target', 'debug', 'txtx');
-    if (fs.existsSync(devBinary)) {
-      serverCommand = devBinary;
-      outputChannel.appendLine(`Using development binary: ${serverCommand}`);
-    } else {
-      serverCommand = 'txtx';
+    // For development: Try common development paths first
+    // These will work when developing locally but won't affect production
+    const devPaths = [
+      '/home/amal/dev/tx/txtx/target/release/txtx',
+      '/home/amal/dev/tx/txtx/target/debug/txtx',
+    ];
+    
+    let found = false;
+    for (const devBinary of devPaths) {
+      if (fs.existsSync(devBinary)) {
+        serverCommand = devBinary;
+        outputChannel.appendLine(`Using development binary: ${serverCommand}`);
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      // Check environment variable
+      const envPath = process.env.TXTX_LSP_PATH;
+      if (envPath && fs.existsSync(envPath)) {
+        serverCommand = envPath;
+        outputChannel.appendLine(`Using TXTX_LSP_PATH: ${serverCommand}`);
+        found = true;
+      }
+    }
+    
+    if (!found) {
+      // Try relative paths (when running from source)
+      const relativePaths = [
+        path.join(__dirname, '..', '..', 'target', 'release', 'txtx'),
+        path.join(__dirname, '..', '..', 'target', 'debug', 'txtx'),
+      ];
+      
+      for (const relBinary of relativePaths) {
+        if (fs.existsSync(relBinary)) {
+          serverCommand = relBinary;
+          outputChannel.appendLine(`Using relative development binary: ${serverCommand}`);
+          found = true;
+          break;
+        }
+      }
+    }
+    
+    if (!found) {
+      // Already defaulted to 'txtx'
       outputChannel.appendLine(`Using system txtx from PATH`);
     }
   }
