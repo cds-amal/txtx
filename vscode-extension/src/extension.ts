@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -24,8 +26,6 @@ export async function activate(context: vscode.ExtensionContext) {
     outputChannel.appendLine(`Using configured LSP path: ${serverCommand}`);
   } else {
     // Try development binary first, then system txtx
-    const path = require('path');
-    const fs = require('fs');
     const devBinary = path.join(__dirname, '..', '..', 'target', 'debug', 'txtx');
     if (fs.existsSync(devBinary)) {
       serverCommand = devBinary;
