@@ -12,14 +12,14 @@ use txtx_addon_kit::hcl::{
     Span,
 };
 
-use txtx_core::kit::types::commands::CommandSpecification;
-
-use super::{DoctorResult, DoctorError, DoctorWarning, DoctorSuggestion, LocatedInputRef, get_addon_specifications, get_action_doc_link};
+use crate::kit::types::commands::CommandSpecification;
+use super::types::{LocatedInputRef, ValidationError, ValidationResult, ValidationWarning};
+use super::addon_specifications::{get_addon_specifications, get_action_doc_link};
 
 /// A visitor that validates HCL runbooks
 pub struct HclValidationVisitor<'a> {
     /// Results collector
-    result: &'a mut DoctorResult,
+    result: &'a mut ValidationResult,
     /// Path to the current file being validated
     file_path: String,
     /// Source content for extracting line/column from spans
@@ -55,7 +55,7 @@ pub struct HclValidationVisitor<'a> {
     /// Blocks that have errors (to skip in validation phase)
     blocks_with_errors: HashSet<String>,
     /// Primary errors (namespace/type errors) to report first
-    primary_errors: Vec<DoctorError>,
+    primary_errors: Vec<ValidationError>,
 }
 
 #[derive(Clone, Debug)]
@@ -66,7 +66,7 @@ struct BlockContext {
 }
 
 impl<'a> HclValidationVisitor<'a> {
-    pub fn new(result: &'a mut DoctorResult, file_path: &str, source: &'a str) -> Self {
+    pub fn new(result: &'a mut ValidationResult, file_path: &str, source: &'a str) -> Self {
         Self {
             result,
             file_path: file_path.to_string(),
@@ -195,7 +195,7 @@ impl<'a> HclValidationVisitor<'a> {
                                             }
                                         };
                                         
-                                        self.primary_errors.push(DoctorError {
+                                        self.primary_errors.push(ValidationError {
                                             message: format!(
                                                 "Unknown action type '{}::{}'. Available actions for '{}': {}",
                                                 namespace, action_name, namespace, available_actions.join(", ")
@@ -215,7 +215,7 @@ impl<'a> HclValidationVisitor<'a> {
                                         .map(|s| s.as_str())
                                         .collect();
                                     
-                                    self.primary_errors.push(DoctorError {
+                                    self.primary_errors.push(ValidationError {
                                         message: format!(
                                             "Unknown addon namespace '{}'. Available namespaces: {}",
                                             namespace, available_namespaces.join(", ")
@@ -231,7 +231,7 @@ impl<'a> HclValidationVisitor<'a> {
                             } else {
                                 // Invalid action type format (missing ::)
                                 let (line, col) = self.optional_span_to_position(action_type.span());
-                                self.primary_errors.push(DoctorError {
+                                self.primary_errors.push(ValidationError {
                                     message: format!("Invalid action type '{}' - must be in format 'namespace::action'", type_str),
                                     file: self.file_path.clone(),
                                     line: if line > 0 { Some(line) } else { None },
@@ -349,7 +349,7 @@ impl<'a> HclValidationVisitor<'a> {
                 if parts.len() >= 2 {
                     let action_name = &parts[1];
                     if !self.action_types.contains_key(action_name) {
-                        self.result.errors.push(DoctorError {
+                        self.result.errors.push(ValidationError {
                             message: format!("Reference to undefined action '{}'", action_name),
                             file: self.file_path.clone(),
                             line: if line > 0 { Some(line) } else { None },
@@ -367,7 +367,7 @@ impl<'a> HclValidationVisitor<'a> {
                 if parts.len() >= 2 {
                     let signer_name = &parts[1];
                     if !self.defined_signers.contains_key(signer_name) {
-                        self.result.errors.push(DoctorError {
+                        self.result.errors.push(ValidationError {
                             message: format!("Reference to undefined signer '{}'", signer_name),
                             file: self.file_path.clone(),
                             line: if line > 0 { Some(line) } else { None },
@@ -382,7 +382,7 @@ impl<'a> HclValidationVisitor<'a> {
                 if parts.len() >= 2 {
                     let var_name = &parts[1];
                     if !self.defined_variables.contains(var_name) {
-                        self.result.errors.push(DoctorError {
+                        self.result.errors.push(ValidationError {
                             message: format!("Reference to undefined variable '{}'", var_name),
                             file: self.file_path.clone(),
                             line: if line > 0 { Some(line) } else { None },
@@ -399,7 +399,7 @@ impl<'a> HclValidationVisitor<'a> {
                     
                     if self.flow_inputs.is_empty() {
                         // No flows defined at all
-                        self.result.errors.push(DoctorError {
+                        self.result.errors.push(ValidationError {
                             message: format!("Reference to flow.{} but no flows are defined", attr_name),
                             file: self.file_path.clone(),
                             line: if line > 0 { Some(line) } else { None },
@@ -416,7 +416,7 @@ impl<'a> HclValidationVisitor<'a> {
                         
                         if !missing_flows.is_empty() {
                             // First, add an error at the usage site (where flow.attribute is referenced)
-                            self.result.errors.push(DoctorError {
+                            self.result.errors.push(ValidationError {
                                 message: format!(
                                     "Flow attribute '{}' is not defined in {} flow{}: {}", 
                                     attr_name,
@@ -437,7 +437,7 @@ impl<'a> HclValidationVisitor<'a> {
                                     .copied()
                                     .unwrap_or((0, 0));
                                 
-                                self.result.errors.push(DoctorError {
+                                self.result.errors.push(ValidationError {
                                     message: format!(
                                         "Flow '{}' is missing attribute '{}' which is required by actions", 
                                         flow_name, 
@@ -465,7 +465,7 @@ impl<'a> HclValidationVisitor<'a> {
                     // In output context, check for circular dependencies
                     if let Some(ctx) = &self.current_block {
                         if ctx.block_type == "output" && !self.defined_outputs.contains(output_name) {
-                            self.result.errors.push(DoctorError {
+                            self.result.errors.push(ValidationError {
                                 message: format!("Output '{}' references undefined output '{}'", ctx.name, output_name),
                                 file: self.file_path.clone(),
                                 line: if line > 0 { Some(line) } else { None },
@@ -490,7 +490,7 @@ impl<'a> HclValidationVisitor<'a> {
             
             if !output_names.contains(&field.to_string()) {
                 let action_type = self.action_types.get(action_name).unwrap();
-                self.result.errors.push(DoctorError {
+                self.result.errors.push(ValidationError {
                     message: format!(
                         "Field '{}' does not exist on action '{}' ({}). Available outputs: {}",
                         field, action_name, action_type, output_names.join(", ")
@@ -499,7 +499,7 @@ impl<'a> HclValidationVisitor<'a> {
                     line: if line > 0 { Some(line) } else { None },
                     column: if col > 0 { Some(col) } else { None },
                     context: None,
-                    documentation_link: Some(get_action_doc_link(action_type)),
+                    documentation_link: action_type.split_once("::").and_then(|(ns, action)| get_action_doc_link(ns, action)),
                 });
             }
         }
@@ -557,7 +557,7 @@ impl<'a> Visit for HclValidationVisitor<'a> {
 /// Run HCL-based validation on a runbook
 pub fn validate_with_hcl(
     content: &str,
-    result: &mut DoctorResult,
+    result: &mut ValidationResult,
     file_path: &str,
 ) -> Result<Vec<LocatedInputRef>, String> {
     // Parse the content as HCL

@@ -3,47 +3,12 @@ use std::path::{Path, PathBuf};
 
 use txtx_core::kit::types::commands::{CommandSpecification, PreCommandSpecification};
 use txtx_core::manifest::WorkspaceManifest;
+use txtx_core::validation::{
+    LocatedInputRef, ValidationError as DoctorError, ValidationResult as DoctorResult,
+    ValidationSuggestion as DoctorSuggestion, ValidationWarning as DoctorWarning,
+};
 
 pub(crate) mod hcl_validator;
-
-#[derive(Debug, Clone)]
-pub struct LocatedInputRef {
-    pub name: String,
-    pub line: usize,
-    pub column: usize,
-}
-
-#[derive(Debug)]
-pub struct DoctorResult {
-    pub errors: Vec<DoctorError>,
-    pub warnings: Vec<DoctorWarning>,
-    pub suggestions: Vec<DoctorSuggestion>,
-}
-
-#[derive(Debug)]
-pub struct DoctorError {
-    pub message: String,
-    pub file: String,
-    pub line: Option<usize>,
-    pub column: Option<usize>,
-    pub context: Option<String>,
-    pub documentation_link: Option<String>,
-}
-
-#[derive(Debug)]
-pub struct DoctorWarning {
-    pub message: String,
-    pub file: String,
-    pub line: Option<usize>,
-    pub column: Option<usize>,
-    pub suggestion: Option<String>,
-}
-
-#[derive(Debug)]
-pub struct DoctorSuggestion {
-    pub message: String,
-    pub example: Option<String>,
-}
 
 /// Main entry point for the doctor command
 pub fn run_doctor(

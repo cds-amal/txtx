@@ -6,6 +6,7 @@ pub mod input_parser;
 pub mod manifest_parser;
 pub mod specifications;
 pub mod state;
+pub mod validation_integration;
 
 #[cfg(test)]
 mod test_integration;

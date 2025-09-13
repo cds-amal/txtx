@@ -13,7 +13,7 @@ fn test_doctor_fixtures() {
         ("test_doctor_simple.tx", false, 2, "Should find undefined signer and invalid field"),
         ("test_doctor_two_pass.tx", false, 1, "Should find undefined action reference"),
         ("test_doctor_unknown_action_type.tx", false, 1, "Should find unknown action type"),
-        ("test_doctor_flow_missing_variable.tx", false, 1, "Should find undefined flow variable"),
+        ("test_doctor_flow_missing_variable.tx", false, 2, "Should find undefined flow variable and usage error"),
         ("test_doctor_errors.tx", false, -1, "Should find multiple errors"), // -1 means any number
     ];
     
@@ -112,11 +112,22 @@ fn test_doctor_fixture_specific_errors() {
         
         let errors = json["errors"].as_array().expect("Expected errors array");
         
-        // Should detect undefined flow.chain_id
+        // Should detect that chain_id is missing in the 'sepolia' flow
         let has_flow_error = errors.iter().any(|e| {
             let msg = e["message"].as_str().unwrap_or("");
-            msg.contains("flow.chain_id") || msg.contains("undefined")
+            let line = e["line"].as_u64().unwrap_or(0);
+            // Check that error mentions sepolia and chain_id, and points to the flow block (around line 14)
+            msg.contains("sepolia") && msg.contains("chain_id") && line >= 14 && line <= 18
         });
-        assert!(has_flow_error, "Should detect undefined flow.chain_id");
+        assert!(has_flow_error, "Should detect that chain_id is missing in the 'sepolia' flow at the correct line");
+        
+        // Should also have an error at the usage site (line 28)
+        let has_usage_error = errors.iter().any(|e| {
+            let msg = e["message"].as_str().unwrap_or("");
+            let line = e["line"].as_u64().unwrap_or(0);
+            // Check that error is at the action where flow.chain_id is used
+            msg.contains("chain_id") && msg.contains("not defined") && line == 28
+        });
+        assert!(has_usage_error, "Should detect error at flow.chain_id usage location");
     }
 }
