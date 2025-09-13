@@ -22,4 +22,4 @@ CONTENT_LENGTH=${#INIT_MSG}
   echo "Content-Length: $EXIT_LENGTH"
   echo ""
   echo -n "$EXIT_MSG"
-} | /home/amal/dev/tx/txtx/target/release/txtx lsp 2>&1
+} | ./target/release/txtx lsp 2>&1
