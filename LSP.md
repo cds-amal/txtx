@@ -20,6 +20,8 @@ The txtx LSP provides IDE support for txtx runbook files (`.tx`) and manifest fi
    - Connects VSCode to the txtx LSP server
    - Auto-detects development binary or uses system txtx
    - Provides debugging commands and status indicators
+   - **Bundled with esbuild**: All dependencies included in single file to prevent activation errors
+   - **Path resolution priority**: Config → ENV → Project binary → System PATH
 
 ### Key Design Decisions
 
@@ -64,9 +66,23 @@ cargo build --package txtx-cli --no-default-features --features cli
 cd vscode-extension
 npm install
 
-# Compile the extension
-npm run compile
+# Build the bundled extension
+npm run compile  # Uses esbuild to create self-contained bundle
+
+# Package the extension
+npm run package  # Creates txtx-lsp-extension-0.0.1.vsix
+
+# Install the extension
+code --install-extension txtx-lsp-extension-0.0.1.vsix
 ```
+
+#### Extension Bundling
+
+The VSCode extension uses [esbuild](https://esbuild.github.io/) to create a self-contained bundle that includes all dependencies. This ensures reliable activation without missing transitive dependencies.
+
+- **Build script**: `vscode-extension/build.js` - Bundles TypeScript source with all npm dependencies
+- **Bundle output**: Single `out/extension.js` file (~774KB) containing all code
+- **Benefits**: No runtime dependency resolution issues, faster extension activation
 
 ### Configuration
 
@@ -213,6 +229,26 @@ cargo test --package txtx-lsp --test backend_tests
 - [ ] Support for more editors (Neovim built-in LSP, Helix, etc.)
 
 ## Troubleshooting
+
+### Extension Not Loading (macOS)
+
+If the extension fails to activate with dependency errors:
+
+1. **Check VS Code Developer Tools** (Help → Toggle Developer Tools → Console):
+   - Look for errors like "Cannot find module 'vscode-languageserver-types'"
+   - This indicates the extension wasn't properly bundled
+
+2. **Rebuild and reinstall the extension**:
+   ```bash
+   cd vscode-extension
+   rm -rf node_modules package-lock.json
+   npm install
+   npm run package
+   code --uninstall-extension cds-amal.txtx-lsp-extension
+   code --install-extension txtx-lsp-extension-0.0.1.vsix
+   ```
+
+3. **Reload VS Code window**: Command Palette → "Developer: Reload Window"
 
 ### Go-to-Definition Not Working
 
