@@ -6,14 +6,14 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use txtx_addon_kit::hcl::{
-    visit::{Visit, visit_block, visit_expr, visit_body},
+    visit::{Visit, visit_block, visit_expr},
     structure::{Block, Body, BlockLabel},
     expr::{Expression, Traversal, TraversalOperator},
     Span,
 };
 
 use crate::kit::types::commands::CommandSpecification;
-use super::types::{LocatedInputRef, ValidationError, ValidationResult, ValidationWarning};
+use super::types::{LocatedInputRef, ValidationError, ValidationResult};
 use super::addon_specifications::{get_addon_specifications, get_action_doc_link};
 
 /// A visitor that validates HCL runbooks

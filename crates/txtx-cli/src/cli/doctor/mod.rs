@@ -171,6 +171,20 @@ fn analyze_runbook_with_manifest(
     
     // For multi-file runbooks, we need to combine all content
     if runbook_sources.tree.len() > 1 {
+        // Combine content from all files and track boundaries
+        let mut combined_content = String::new();
+        let mut file_boundaries = Vec::new();
+        let mut current_line = 1usize;
+        
+        for (file_location, (_name, raw_content)) in &runbook_sources.tree {
+            let start_line = current_line;
+            let content = raw_content.to_string();
+            combined_content.push_str(&content);
+            combined_content.push('\n');
+            let line_count = content.lines().count();
+            current_line += line_count + 1;
+            file_boundaries.push((file_location.to_string(), start_line, current_line));
+        }
         
         // Analyze the combined content
         let combined_path = location.path.join("_combined.tx");
@@ -256,5 +270,5 @@ fn analyze_runbook_with_manifest(
 }
 
 // Re-export for backward compatibility and LSP integration
-pub use analyzer::{RunbookAnalyzer, ValidationContext, ValidationOutcome, ValidationRule};
+pub use analyzer::{ValidationContext, ValidationOutcome, ValidationRule};
 pub use analyzer::rules::{CliInputOverrideRule, InputDefinedRule, InputNamingConventionRule, SensitiveDataRule};

@@ -1,7 +1,7 @@
 //! Helper functions for getting addon specifications and documentation links
 
 use std::collections::HashMap;
-use crate::kit::types::commands::{CommandSpecification, PreCommandSpecification};
+use crate::kit::types::commands::CommandSpecification;
 
 /// Get addon specifications for validation
 /// Returns a minimal set of addon namespaces and actions for HCL validation

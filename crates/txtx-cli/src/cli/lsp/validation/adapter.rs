@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use lsp_types::{Diagnostic, Range, Position, Url};
 use crate::cli::doctor::{
-    ValidationRule, ValidationContext, ValidationOutcome,
+    ValidationRule, ValidationContext,
     InputDefinedRule, InputNamingConventionRule, CliInputOverrideRule, SensitiveDataRule,
 };
 use txtx_core::manifest::WorkspaceManifest;

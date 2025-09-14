@@ -2,7 +2,7 @@
 
 use lsp_server::{RequestId, Response};
 use lsp_types::*;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 
 /// Cast an LSP request to a specific type
 pub fn cast_request<R>(req: lsp_server::Request) -> Result<(RequestId, R::Params), (RequestId, serde_json::Error)>

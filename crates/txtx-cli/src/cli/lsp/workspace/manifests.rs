@@ -5,7 +5,7 @@
 
 use lsp_types::Url;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+
 
 /// Represents a parsed txtx manifest
 #[derive(Debug, Clone)]

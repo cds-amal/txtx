@@ -215,7 +215,7 @@ fn handle_notification(
             }
         }
         "textDocument/didSave" => {
-            let params: lsp_types::DidSaveTextDocumentParams = serde_json::from_value(not.params)?;
+            let _params: lsp_types::DidSaveTextDocumentParams = serde_json::from_value(not.params)?;
             // Currently a no-op, but could trigger validation
         }
         "textDocument/didClose" => {

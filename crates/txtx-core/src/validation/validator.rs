@@ -36,7 +36,7 @@ pub fn validate_runbook(
     file_path: &str,
     source: &str,
     body: &Body,
-    config: ValidatorConfig,
+    _config: ValidatorConfig,
 ) -> ValidationResult {
     let mut result = ValidationResult::new();
     
