@@ -4,6 +4,12 @@
 
 After migrating from Tree-sitter to hcl-edit, source location tracking is now handled natively by the hcl-edit parser, which provides built-in span information for all AST nodes.
 
+### Where This Is Used in the Codebase
+
+- **Core Validation**: [`crates/txtx-core/src/validation/hcl_validator.rs`](crates/txtx-core/src/validation/hcl_validator.rs) - The main HCL validation visitor that processes spans
+- **Doctor Analyzer**: [`crates/txtx-cli/src/cli/doctor/analyzer/mod.rs`](crates/txtx-cli/src/cli/doctor/analyzer/mod.rs) - Uses validation results with location info
+- **LSP Diagnostics**: [`crates/txtx-cli/src/cli/lsp/validation/converter.rs`](crates/txtx-cli/src/cli/lsp/validation/converter.rs) - Converts spans to LSP positions
+
 ### Implementation Details
 
 #### 1. HCL Validator with Span Support
@@ -70,6 +76,8 @@ fn span_to_position(&self, span: &std::ops::Range<usize>) -> (usize, usize) {
 }
 ```
 
+**Implementation Location**: [`crates/txtx-core/src/validation/hcl_validator.rs:117`](crates/txtx-core/src/validation/hcl_validator.rs#L117)
+
 #### 4. Error Reporting with Precise Locations
 Errors include exact line and column information:
 
@@ -89,6 +97,11 @@ self.result.errors.push(DoctorError {
     documentation_link: None,
 });
 ```
+
+**Usage Examples**:
+- Validation errors: [`crates/txtx-core/src/validation/hcl_validator.rs:201`](crates/txtx-core/src/validation/hcl_validator.rs#L201)
+- Block validation: [`crates/txtx-core/src/validation/hcl_validator.rs:318`](crates/txtx-core/src/validation/hcl_validator.rs#L318)
+- Error creation: [`crates/txtx-core/src/validation/hcl_validator.rs:355`](crates/txtx-core/src/validation/hcl_validator.rs#L355)
 
 ## Key Design Benefits
 
@@ -168,6 +181,27 @@ The current hcl-edit approach provides:
 4. **Consistency** - Doctor validates using the same parser that runs the code
 5. **Performance** - No additional data structures or lookups needed
 6. **Reliability** - hcl-edit is battle-tested and actively maintained
+
+## Integration with Refactored Architecture
+
+After the 2024 architectural refactoring, span tracking is integrated throughout the modular codebase:
+
+### Doctor Module Integration
+- **Validation Rules**: Each rule in [`crates/txtx-cli/src/cli/doctor/analyzer/rules.rs`](crates/txtx-cli/src/cli/doctor/analyzer/rules.rs) receives errors with precise locations
+- **Error Formatting**: The formatters in [`crates/txtx-cli/src/cli/doctor/formatter/`](crates/txtx-cli/src/cli/doctor/formatter/) display line:column information
+- **Multi-file Support**: Spans are preserved when analyzing runbooks that span multiple files
+
+### LSP Module Integration
+- **Diagnostic Conversion**: [`crates/txtx-cli/src/cli/lsp/validation/converter.rs`](crates/txtx-cli/src/cli/lsp/validation/converter.rs) converts spans to LSP Range types
+- **Real-time Validation**: The LSP provides immediate feedback with exact error locations
+- **Cross-file Navigation**: Go-to-definition uses spans to jump to exact locations
+
+### Example Flow
+```
+1. HCL Parser (with spans) → 2. Validation (preserves spans) → 3. Error Creation (with location)
+                                                                        ↓
+6. IDE Highlights ← 5. LSP Protocol ← 4. Format Output (Terminal/JSON/LSP)
+```
 
 ## Lesson Learned
 Starting with a well-established parser (hcl-edit) that has native span support proved superior to building a custom Tree-sitter grammar. The unified parser approach ensures consistency between validation and execution while providing precise error locations throughout.
