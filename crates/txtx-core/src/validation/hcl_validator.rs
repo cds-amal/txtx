@@ -87,6 +87,32 @@ impl<'a> HclValidationVisitor<'a> {
         }
     }
     
+    pub fn new_with_addons(
+        result: &'a mut ValidationResult, 
+        file_path: &str, 
+        source: &'a str,
+        addon_specs: HashMap<String, Vec<(String, CommandSpecification)>>,
+    ) -> Self {
+        Self {
+            result,
+            file_path: file_path.to_string(),
+            source,
+            action_types: HashMap::new(),
+            action_specs: HashMap::new(),
+            addon_specs,
+            defined_variables: HashSet::new(),
+            defined_signers: HashMap::new(),
+            defined_outputs: HashSet::new(),
+            flow_inputs: HashMap::new(),
+            flow_locations: HashMap::new(),
+            current_block: None,
+            is_validation_phase: false,
+            input_refs: Vec::new(),
+            blocks_with_errors: HashSet::new(),
+            primary_errors: Vec::new(),
+        }
+    }
+    
     /// Convert a span to line/column position
     fn span_to_position(&self, span: &std::ops::Range<usize>) -> (usize, usize) {
         let start = span.start;
@@ -204,7 +230,7 @@ impl<'a> HclValidationVisitor<'a> {
                                             line: if line > 0 { Some(line) } else { None },
                                             column: if col > 0 { Some(col) } else { None },
                                             context: suggestion,
-                                            documentation_link: Some(format!("https://docs.txtx.io/addons/{}", namespace)),
+                                            documentation_link: Some(format!("https://docs.txtx.sh/addons/{}/actions", namespace)),
                                         });
                                         self.blocks_with_errors.insert(name_str.clone());
                                     }
@@ -554,7 +580,25 @@ impl<'a> Visit for HclValidationVisitor<'a> {
     }
 }
 
-/// Run HCL-based validation on a runbook
+/// Run HCL-based validation on a runbook with custom addon specifications
+pub fn validate_with_hcl_and_addons(
+    content: &str,
+    result: &mut ValidationResult,
+    file_path: &str,
+    addon_specs: HashMap<String, Vec<(String, CommandSpecification)>>,
+) -> Result<Vec<LocatedInputRef>, String> {
+    // Parse the content as HCL
+    let body: Body = content.parse()
+        .map_err(|e| format!("Failed to parse runbook: {}", e))?;
+    
+    // Create and run the validator with custom addon specs
+    let mut visitor = HclValidationVisitor::new_with_addons(result, file_path, content, addon_specs);
+    visitor.validate(&body);
+    
+    Ok(visitor.input_refs)
+}
+
+/// Run HCL-based validation on a runbook (uses default addon specifications)
 pub fn validate_with_hcl(
     content: &str,
     result: &mut ValidationResult,
