@@ -94,6 +94,11 @@ impl WorkspaceState {
             .and_then(|manifest_uri| self.manifests.get(manifest_uri))
     }
     
+    /// Get the manifest for a document (alias for get_manifest_for_runbook)
+    pub fn get_manifest_for_document(&self, document_uri: &Url) -> Option<&Manifest> {
+        self.get_manifest_for_runbook(document_uri)
+    }
+    
     /// Get environment variables for a specific environment
     pub fn get_environment_vars(&self, env_name: &str) -> Option<&HashMap<String, String>> {
         self.environment_vars.get(env_name)

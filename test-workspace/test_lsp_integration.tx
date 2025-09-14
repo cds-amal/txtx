@@ -1,0 +1,48 @@
+// Test file to verify LSP is using doctor validation rules
+
+addon "evm" {
+  chain_id = 1
+  rpc_url = "https://eth.public-rpc.com"
+}
+
+// Test 1: Unknown action type (should be caught by both basic and doctor validation)
+action "unknown" "evm::does_not_exist" {
+  chain_id = 1
+}
+
+// Test 2: Using undefined input (doctor-specific validation)
+action "deploy" "evm::deploy_contract" {
+  chain_id = addon.evm.chain_id
+  contract = inputs.undefined_contract_bytecode  // This input is not defined
+  deployer = inputs.undefined_deployer_address   // This input is not defined
+}
+
+// Test 3: Sensitive data in output (doctor-specific validation)
+output "exposed_private_key" {
+  value = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}
+
+// Test 4: Valid action for comparison
+action "call" "evm::call_contract" {
+  chain_id = addon.evm.chain_id
+  contract_address = "0x742d35Cc6634C0532925a3b844Bc9e7595f89ed3"
+  function_name = "balanceOf"
+  function_params = ["0x742d35Cc6634C0532925a3b844Bc9e7595f89ed3"]
+  function_abi = {
+    inputs = [
+      {
+        name = "owner"
+        type = "address"
+      }
+    ]
+    name = "balanceOf"
+    outputs = [
+      {
+        name = ""
+        type = "uint256"
+      }
+    ]
+    stateMutability = "view"
+    type = "function"
+  }
+}

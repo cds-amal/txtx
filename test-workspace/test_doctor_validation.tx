@@ -1,0 +1,26 @@
+// Test file for doctor validation rules
+
+addon "evm" {
+  chain_id = 1
+  rpc_url = "https://eth.public-rpc.com"
+}
+
+// Using undefined input - should trigger doctor validation
+action "deploy" "evm::deploy_contract" {
+  chain_id = addon.evm.chain_id
+  contract = inputs.contract_bytecode  // This input is not defined
+  deployer = inputs.deployer_address   // This input is not defined too
+}
+
+// Using sensitive data in output - should trigger warning
+output "private_key" {
+  value = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}
+
+// Another undefined input usage
+action "transfer" "evm::send_eth" {
+  chain_id = addon.evm.chain_id
+  to = inputs.recipient_address  // Undefined input
+  value = "1000000000000000000"
+  private_key = output.private_key  // Using sensitive data
+}

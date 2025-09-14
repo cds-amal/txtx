@@ -5,6 +5,35 @@ runbooks:
   - name: deploy
     location: deploy.tx
     description: Deploy contract
+  - name: test_doctor_validation
+    location: test_doctor_validation.tx
+    description: Test doctor validation rules
+  - name: test_doctor_lsp
+    location: test_doctor_lsp.tx
+    description: Test LSP doctor integration
+  - name: test_lsp_integration
+    location: test_lsp_integration.tx
+    description: Test LSP integration with doctor rules
+    inputs:
+      - name: contract_bytecode
+        type: string
+        description: Contract bytecode for deployment
+      - name: deployer_address
+        type: string
+        description: Address of the deployer
+  - name: test_lsp_doctor_integration
+    location: test_lsp_doctor_integration.tx
+    description: Comprehensive test of LSP-Doctor integration
+    inputs:
+      - name: deployer_address
+        type: string
+        description: Address of the deployer
+      - name: recipient
+        type: string
+        description: Recipient address
+      - name: sender_address
+        type: string
+        description: Sender address
 
 environments:
   default:

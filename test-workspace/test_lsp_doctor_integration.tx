@@ -1,0 +1,37 @@
+// Test file to verify LSP-Doctor integration
+// This should trigger multiple doctor validation rules
+
+addon "evm" {
+  chain_id = 1
+  rpc_url = "https://eth.public-rpc.com"
+}
+
+// Test 1: Undefined input (should trigger InputDefinedRule)
+action "deploy" "evm::deploy_contract" {
+  chain_id = addon.evm.chain_id
+  contract = input.undefined_contract  // ERROR: This input is not defined
+  deployer = input.deployer_address
+}
+
+// Test 2: Input naming convention (should trigger InputNamingConventionRule)
+variable "BadlyNamedInput" {  // WARNING: Should use snake_case
+  value = "test"
+}
+
+// Test 3: Sensitive data exposure (should trigger SensitiveDataRule)
+output "exposed_key" {
+  value = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"  // WARNING: Looks like a private key
+}
+
+// Test 4: CLI input override check
+action "transfer" "evm::send_eth" {
+  chain_id = addon.evm.chain_id
+  to = input.recipient  // Should check if this is overridden from CLI
+  value = "1000000000000000000"
+  from = input.sender_address
+}
+
+// Test 5: Unknown action type
+action "bad_action" "evm::unknown_action" {  // ERROR: Unknown action type
+  chain_id = 1
+}

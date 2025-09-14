@@ -42,7 +42,21 @@ impl DocumentSyncHandler {
         let document = workspace.get_document(uri)?;
         
         let diagnostics = if document.is_runbook() {
-            crate::cli::lsp::diagnostics::validate_runbook(uri, document.content())
+            // Try to get manifest for enhanced validation
+            let manifest = workspace.get_manifest_for_document(uri);
+            
+            if let Some(manifest) = manifest {
+                crate::cli::lsp::diagnostics_enhanced::validate_runbook_with_doctor_rules(
+                    uri,
+                    document.content(),
+                    Some(manifest),
+                    None, // TODO: Get environment from workspace
+                    &[], // TODO: Get CLI inputs from workspace
+                )
+            } else {
+                // Fall back to basic validation
+                crate::cli::lsp::diagnostics::validate_runbook(uri, document.content())
+            }
         } else {
             Vec::new()
         };

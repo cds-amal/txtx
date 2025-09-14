@@ -1,0 +1,27 @@
+// Test file for enhanced LSP diagnostics
+// This should trigger doctor validation rules
+
+action "test" "evm::unknown_action" {
+    description = "This should trigger unknown action error"
+    address = "0x1234567890123456789012345678901234567890"
+}
+
+variable "api_key" {
+    value = "undefined_variable"  // This should trigger undefined variable error
+}
+
+action "sensitive" "evm::send_eth" {
+    description = "Test sensitive data detection"
+    private_key = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"  // Should trigger sensitive data warning
+    to = "0x1234567890123456789012345678901234567890"
+    amount = "1.0"
+}
+
+// Test sensitive data in variable
+variable "private_data" {
+    value = "sk_test_1234567890abcdef"  // Should trigger sensitive data warning
+}
+
+output "test_output" {
+    value = action.missing_action.result  // Should trigger missing action reference
+}

@@ -103,14 +103,21 @@ pub fn find_manifest_for_runbook(runbook_uri: &Url) -> Option<Url> {
     
     // Walk up the directory tree looking for Txtx.toml
     loop {
-        let manifest_path = current_dir.join("Txtx.toml");
-        if manifest_path.exists() {
-            return Url::from_file_path(&manifest_path).ok();
-        }
+        // Check for various manifest file names
+        let manifest_candidates = [
+            "Txtx.toml",
+            "txtx.toml",
+            "Txtx.yml",
+            "txtx.yml",
+            "Txtx.yaml",
+            "txtx.yaml",
+        ];
         
-        let alt_manifest_path = current_dir.join("txtx.toml");
-        if alt_manifest_path.exists() {
-            return Url::from_file_path(&alt_manifest_path).ok();
+        for candidate in &manifest_candidates {
+            let manifest_path = current_dir.join(candidate);
+            if manifest_path.exists() {
+                return Url::from_file_path(&manifest_path).ok();
+            }
         }
         
         current_dir = current_dir.parent()?;

@@ -1,9 +1,13 @@
-mod diagnostics;
-mod functions;
-mod workspace;
 mod handlers;
+mod workspace;
+mod functions;
 mod utils;
+mod diagnostics;
+mod diagnostics_enhanced;
 mod validation;
+
+#[cfg(test)]
+mod tests;
 
 use lsp_server::{Connection, Message, Request, Response};
 use lsp_types::{
@@ -179,40 +183,36 @@ fn handle_notification(
             let uri = params.text_document.uri.clone();
             handlers.document_sync.did_open(params);
             
-            // Send diagnostics
+            // Send diagnostics (always, even if empty)
             let diagnostics = handlers.diagnostics.get_diagnostics(&uri);
-            if !diagnostics.is_empty() {
-                let params = lsp_types::PublishDiagnosticsParams {
-                    uri,
-                    diagnostics,
-                    version: None,
-                };
-                let notification = lsp_server::Notification {
-                    method: "textDocument/publishDiagnostics".to_string(),
-                    params: serde_json::to_value(params)?,
-                };
-                connection.sender.send(Message::Notification(notification))?;
-            }
+            let params = lsp_types::PublishDiagnosticsParams {
+                uri,
+                diagnostics,
+                version: None,
+            };
+            let notification = lsp_server::Notification {
+                method: "textDocument/publishDiagnostics".to_string(),
+                params: serde_json::to_value(params)?,
+            };
+            connection.sender.send(Message::Notification(notification))?;
         }
         "textDocument/didChange" => {
             let params: lsp_types::DidChangeTextDocumentParams = serde_json::from_value(not.params)?;
             let uri = params.text_document.uri.clone();
             handlers.document_sync.did_change(params);
             
-            // Send diagnostics
+            // Send diagnostics (always, even if empty)
             let diagnostics = handlers.diagnostics.get_diagnostics(&uri);
-            if !diagnostics.is_empty() {
-                let params = lsp_types::PublishDiagnosticsParams {
-                    uri,
-                    diagnostics,
-                    version: None,
-                };
-                let notification = lsp_server::Notification {
-                    method: "textDocument/publishDiagnostics".to_string(),
-                    params: serde_json::to_value(params)?,
-                };
-                connection.sender.send(Message::Notification(notification))?;
-            }
+            let params = lsp_types::PublishDiagnosticsParams {
+                uri,
+                diagnostics,
+                version: None,
+            };
+            let notification = lsp_server::Notification {
+                method: "textDocument/publishDiagnostics".to_string(),
+                params: serde_json::to_value(params)?,
+            };
+            connection.sender.send(Message::Notification(notification))?;
         }
         "textDocument/didSave" => {
             let _params: lsp_types::DidSaveTextDocumentParams = serde_json::from_value(not.params)?;

@@ -1,0 +1,3 @@
+action "bad" "evm::does_not_exist" {
+  chain_id = 1
+}

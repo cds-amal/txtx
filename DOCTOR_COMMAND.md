@@ -26,7 +26,8 @@ txtx doctor --format quickfix    # For editor integration
 
 ## Features
 
-### 1. **Comprehensive Validation**
+### 1. **Validation**
+
 - **Manifest validation**: Checks txtx.yml structure and content
 - **Runbook resolution**: Verifies all runbook files can be found
 - **Input validation**: Ensures all required inputs are defined
@@ -37,13 +38,16 @@ txtx doctor --format quickfix    # For editor integration
 ### 2. **Multiple Output Formats**
 
 #### Terminal Format (Default)
+
 Pretty-printed output with colors and formatting:
-```
+
+```console
 ✓ No issues found!
 ```
 
 Or with issues:
-```
+
+```console
 Found 2 issue(s):
 
 runbooks/deploy.tx:19:23 error[1]: Input 'input.private_key' is not defined in environment 'default'
@@ -55,7 +59,9 @@ runbooks/deploy.tx:25:15 error[2]: Action 'transfer' of type 'evm::send_eth' doe
 ```
 
 #### JSON Format
+
 Machine-readable format for CI/CD integration:
+
 ```json
 {
   "issues": [
@@ -81,8 +87,10 @@ Machine-readable format for CI/CD integration:
 ```
 
 #### Quickfix Format
+
 For editor integration (Vim, Neovim, VS Code):
-```
+
+```conosole
 runbooks/deploy.tx:19:23: error: Input 'input.private_key' is not defined
 runbooks/deploy.tx:25:15: error: Action 'transfer' does not have output field 'result'
 ```
@@ -92,7 +100,8 @@ runbooks/deploy.tx:25:15: error: Action 'transfer' does not have output field 'r
 In terminals that support hyperlinks (VS Code, iTerm2, modern terminals), error locations are clickable and will open the file at the exact line and column in your editor.
 
 Example output with clickable links:
-```
+
+```console
 runbooks/transfer.tx:21:23 error: accessing non-existent output field
                      ^^^^^ Click to jump to location
 ```
@@ -110,15 +119,16 @@ txtx doctor --environment production
 ```
 
 Example manifest with environments:
+
 ```yaml
 environments:
   global:
     rpc_url: "https://sepolia.infura.io/v3/YOUR_KEY"
-  
+
   production:
     private_key: ${{ env.PRIVATE_KEY }}
     contract_address: "0x123..."
-  
+
   development:
     private_key: "0xtest..."
     contract_address: "0x456..."
@@ -141,12 +151,14 @@ runbooks:
 ### 1. Missing Input Variables
 
 **Issue:**
-```
+
+```console
 Input 'input.private_key' is not defined in environment 'production'
 ```
 
 **Solution:**
 Add the missing input to your txtx.yml:
+
 ```yaml
 environments:
   production:
@@ -156,13 +168,16 @@ environments:
 ### 2. Invalid Action Output Access
 
 **Issue:**
-```
+
+```console
 Action 'transfer' of type 'evm::send_eth' does not have output field 'result'
 Available outputs: tx_hash
 ```
 
 **Solution:**
+
 Use the correct output field:
+
 ```hcl
 output "transaction_hash" {
   value = action.transfer.tx_hash  // Not .result
@@ -172,12 +187,15 @@ output "transaction_hash" {
 ### 3. Undefined Action References
 
 **Issue:**
-```
+
+```console
 Reference to undefined action 'deploy_contract'
 ```
 
 **Solution:**
+
 Ensure the action is defined before referencing it:
+
 ```hcl
 action "deploy_contract" "evm::deploy_contract" {
   // ... configuration
@@ -192,7 +210,8 @@ output "contract_address" {
 ### 4. Circular Dependencies
 
 **Issue:**
-```
+
+```console
 Circular dependency detected: action1 → action2 → action3 → action1
 ```
 
@@ -251,6 +270,7 @@ fi
 ## Examples
 
 ### Basic Validation
+
 ```bash
 $ txtx doctor
 🏥 Txtx Doctor Results
@@ -263,6 +283,7 @@ $ txtx doctor
 ```
 
 ### With Errors
+
 ```bash
 $ txtx doctor deploy
 🏥 Txtx Doctor Results
@@ -293,6 +314,7 @@ $ txtx doctor deploy
 ```
 
 ### JSON Output for Scripts
+
 ```bash
 $ txtx doctor --format json | jq '.summary'
 {
@@ -306,16 +328,19 @@ $ txtx doctor --format json | jq '.summary'
 ## Troubleshooting
 
 ### Doctor can't find my runbook
+
 - Check that the runbook is defined in txtx.yml
 - Verify the file path is correct relative to the manifest
 - Ensure the .tx file exists
 
 ### Doctor shows no output
+
 - Try running with `--format terminal` explicitly
 - Check if stdout is being redirected
 - Verify the txtx binary is up to date
 
 ### False positives
+
 - Ensure you're using the latest version of txtx
 - Check if custom addons are properly registered
 - Verify environment variables are set correctly

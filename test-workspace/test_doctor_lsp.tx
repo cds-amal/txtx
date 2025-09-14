@@ -1,0 +1,21 @@
+addon "evm" {
+  chain_id = 1
+  rpc_url = "https://eth.public-rpc.com"
+}
+
+// This should trigger "undefined input" error
+action "deploy" "evm::deploy_contract" {
+  chain_id = addon.evm.chain_id
+  contract = inputs.undefined_contract  // undefined input
+  deployer = inputs.undefined_deployer  // undefined input
+}
+
+// This should trigger "sensitive data" warning
+output "private_key_exposed" {
+  value = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+}
+
+// Unknown action type
+action "bad_action" "evm::unknown_action" {
+  chain_id = 1
+}

@@ -5,3 +5,6 @@
 
 mod converter;
 mod adapter;
+
+pub use adapter::DoctorValidationAdapter;
+pub use converter::validation_outcome_to_diagnostic;
