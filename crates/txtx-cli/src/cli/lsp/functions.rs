@@ -51,7 +51,7 @@ fn get_available_addons() -> Vec<Box<dyn Addon>> {
     use txtx_core::std::StdAddon;
     use txtx_addon_telegram::TelegramAddon;
     
-    let mut addons: Vec<Box<dyn Addon>> = vec![
+    let addons: Vec<Box<dyn Addon>> = vec![
         Box::new(StdAddon::new()),
         Box::new(txtx_addon_network_bitcoin::BitcoinNetworkAddon::new()),
         Box::new(txtx_addon_network_evm::EvmNetworkAddon::new()),

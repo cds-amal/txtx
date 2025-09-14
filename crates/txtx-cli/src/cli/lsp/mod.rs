@@ -1,5 +1,9 @@
-mod backend;
+mod diagnostics;
 mod functions;
+mod workspace;
+mod handlers;
+mod utils;
+mod validation;
 
 use lsp_server::{Connection, Message, Request, Response};
 use lsp_types::{
@@ -7,7 +11,9 @@ use lsp_types::{
     CompletionOptions, OneOf,
 };
 use std::error::Error;
-use self::backend::TxtxLspBackend;
+
+use self::handlers::Handlers;
+use self::workspace::SharedWorkspaceState;
 
 /// Run the Language Server Protocol server
 pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -42,6 +48,7 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
             trigger_characters: Some(vec![".".to_string()]),
             ..Default::default()
         }),
+
         ..Default::default()
     };
     
@@ -58,8 +65,9 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
     
     eprintln!("LSP server initialized successfully");
     
-    // Create the backend
-    let backend = TxtxLspBackend::new();
+    // Create shared workspace state and handlers
+    let workspace = SharedWorkspaceState::new();
+    let handlers = Handlers::new(workspace);
     
     // Main message loop
     for message in &connection.receiver {
@@ -72,15 +80,15 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
                     return Ok(());
                 }
                 
-                // Route the request to our backend
-                let response = handle_request(req, &backend);
+                // Route the request to appropriate handler
+                let response = handle_request(req, &handlers);
                 if let Some(resp) = response {
                     connection.sender.send(Message::Response(resp))?;
                 }
             }
             Message::Notification(not) => {
                 eprintln!("Received notification: {}", not.method);
-                handle_notification(not, &backend)?;
+                handle_notification(not, &handlers, &connection)?;
             }
             Message::Response(_) => {
                 // We don't send requests, so we shouldn't get responses
@@ -98,7 +106,7 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
 
 fn handle_request(
     req: Request,
-    backend: &TxtxLspBackend,
+    handlers: &Handlers,
 ) -> Option<Response> {
     match req.method.as_str() {
         "textDocument/definition" => {
@@ -114,7 +122,7 @@ fn handle_request(
                 }
             };
             
-            let result = backend.goto_definition(params);
+            let result = handlers.definition.goto_definition(params);
             Some(Response::new_ok(req.id, result))
         }
         "textDocument/hover" => {
@@ -130,7 +138,7 @@ fn handle_request(
                 }
             };
             
-            let result = backend.hover(params);
+            let result = handlers.hover.hover(params);
             Some(Response::new_ok(req.id, result))
         }
         "textDocument/completion" => {
@@ -146,7 +154,7 @@ fn handle_request(
                 }
             };
             
-            let result = backend.completion(params);
+            let result = handlers.completion.completion(params);
             Some(Response::new_ok(req.id, result))
         }
         _ => {
@@ -162,24 +170,57 @@ fn handle_request(
 
 fn handle_notification(
     not: lsp_server::Notification,
-    backend: &TxtxLspBackend,
+    handlers: &Handlers,
+    connection: &Connection,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     match not.method.as_str() {
         "textDocument/didOpen" => {
             let params: lsp_types::DidOpenTextDocumentParams = serde_json::from_value(not.params)?;
-            backend.did_open(params);
+            let uri = params.text_document.uri.clone();
+            handlers.document_sync.did_open(params);
+            
+            // Send diagnostics
+            let diagnostics = handlers.diagnostics.get_diagnostics(&uri);
+            if !diagnostics.is_empty() {
+                let params = lsp_types::PublishDiagnosticsParams {
+                    uri,
+                    diagnostics,
+                    version: None,
+                };
+                let notification = lsp_server::Notification {
+                    method: "textDocument/publishDiagnostics".to_string(),
+                    params: serde_json::to_value(params)?,
+                };
+                connection.sender.send(Message::Notification(notification))?;
+            }
         }
         "textDocument/didChange" => {
             let params: lsp_types::DidChangeTextDocumentParams = serde_json::from_value(not.params)?;
-            backend.did_change(params);
+            let uri = params.text_document.uri.clone();
+            handlers.document_sync.did_change(params);
+            
+            // Send diagnostics
+            let diagnostics = handlers.diagnostics.get_diagnostics(&uri);
+            if !diagnostics.is_empty() {
+                let params = lsp_types::PublishDiagnosticsParams {
+                    uri,
+                    diagnostics,
+                    version: None,
+                };
+                let notification = lsp_server::Notification {
+                    method: "textDocument/publishDiagnostics".to_string(),
+                    params: serde_json::to_value(params)?,
+                };
+                connection.sender.send(Message::Notification(notification))?;
+            }
         }
         "textDocument/didSave" => {
             let params: lsp_types::DidSaveTextDocumentParams = serde_json::from_value(not.params)?;
-            backend.did_save(params);
+            // Currently a no-op, but could trigger validation
         }
         "textDocument/didClose" => {
             let params: lsp_types::DidCloseTextDocumentParams = serde_json::from_value(not.params)?;
-            backend.did_close(params);
+            handlers.document_sync.did_close(params);
         }
         _ => {
             eprintln!("Unhandled notification: {}", not.method);
