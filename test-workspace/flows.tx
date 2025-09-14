@@ -1,0 +1,13 @@
+// flows.tx - Define reusable flows
+
+flow "testnet" {
+  chain_id = 1234
+  api_url = "https://testnet.example.com"
+  gas_price = 10
+}
+
+flow "mainnet" {
+  chain_id = 1
+  api_url = "https://mainnet.example.com"
+  gas_price = 20
+}

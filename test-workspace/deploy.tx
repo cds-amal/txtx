@@ -5,7 +5,8 @@ action "deploy" "evm::deploy_contract" {
   // Try Ctrl+Click or F12 on "contract_address" after "inputs."
   contract_address = inputs.contract_address
   private_key = inputs.private_key
-  api_endpoint = inputs.api_url
+  api_endpoint = flow.testnet.api_url
+  chain_id = flow.testnet.chain_id
 }
 
 output "contract_address" {
