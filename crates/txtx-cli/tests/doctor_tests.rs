@@ -119,10 +119,14 @@ fn test_doctor_passes_valid_runbook() {
     let runbook = r#"
         addon "evm" { network_id = 1 }
         
+        signer "alice" "evm::wallet" {
+            private_key = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        }
+        
         action "send" "evm::send_eth" {
-            from = "0x123"
-            to = "0x456"
-            value = "1000"
+            signer = signer.alice
+            recipient_address = "0x456"
+            amount = "1000"
         }
         
         output "tx" {

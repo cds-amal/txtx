@@ -1,0 +1,13 @@
+name: test-workspace
+id: test-workspace
+
+runbooks:
+  - name: deploy
+    location: ./deploy
+    description: Deploy contract
+
+environments:
+  global:
+    contract_address: "0x1234567890abcdef"
+    private_key: "test_private_key"
+    api_url: "https://api.test.com"
