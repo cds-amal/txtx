@@ -24,25 +24,49 @@ The doctor command supports multiple output formats for different use cases:
 ### Environment Variables
 - `TXTX_DOCTOR_FORMAT`: Set default format (e.g., `export TXTX_DOCTOR_FORMAT=quickfix`)
 
-## Architecture
+## Architecture (Refactored)
+
+The module now follows a modular, trait-based design:
+
+```
+doctor/
+├── analyzer/           # Core validation logic
+│   ├── mod.rs         # Public API and orchestration
+│   ├── rules.rs       # ValidationRule trait and implementations
+│   ├── inputs.rs      # Input validation utilities
+│   └── validator.rs   # Rule execution engine
+├── formatter/         # Output formatting
+│   ├── json.rs       # JSON output format
+│   ├── quickfix.rs   # Editor quickfix format
+│   └── terminal.rs   # Human-readable terminal output
+├── config.rs         # Configuration handling
+├── workspace.rs      # Workspace and manifest utilities
+└── mod.rs           # Module entry point (195 lines, down from 1,159)
+```
 
 ### Core Components
 
-#### `mod.rs`
-Main implementation containing:
-- `run_doctor()` - Entry point that handles manifest loading and runbook discovery
-- `analyze_runbook_with_context()` - Core analysis function with manifest context
-- `validate_inputs_against_manifest_with_locations()` - Validates input references with precise line/column info
-- `find_input_location()` - Searches for exact location of input references in source
-- `check_output_field_exists()` - Verifies action outputs exist
-- `display_results()` - Formats output based on selected format (pretty/quickfix/json)
+#### ValidationRule Trait
+The core abstraction for all validation rules:
 
-#### `hcl_validator.rs`
-HCL-based validation using hcl-edit's visitor pattern:
-- `HclValidationVisitor` - Traverses the HCL structure collecting validation data
-- `LocatedInputRef` - Tracks input references with their source locations
-- Two-pass validation: First collects definitions, then validates references
-- Validates action output field access against addon specifications
+```rust
+pub trait ValidationRule: Send + Sync {
+    fn name(&self) -> &'static str;
+    fn check(&self, context: &ValidationContext) -> ValidationOutcome;
+    fn description(&self) -> &'static str { "No description" }
+}
+```
+
+#### Built-in Rules
+- `InputDefinedRule`: Validates that referenced inputs are defined
+- `InputNamingConventionRule`: Enforces naming conventions
+- `CliInputOverrideRule`: Checks CLI input overrides
+- `SensitiveDataRule`: Detects potential security issues
+
+#### Formatter System
+- Trait-based formatters for extensibility
+- Pluggable output formats (JSON, Terminal, Quickfix)
+- Auto-detection based on output context
 
 ### Key Features
 
