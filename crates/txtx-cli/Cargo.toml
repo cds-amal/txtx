@@ -54,6 +54,8 @@ indicatif = "0.18.0"
 fern = "0.7.1"
 log = "0.4.27"
 lazy_static = "1.4.0"
+regex = "1.10"
+toml = "0.8"
 
 [features]
 default = ["cli", "supervisor_ui"]

@@ -2,6 +2,8 @@
 txtx-install = "install --path crates/txtx-cli --features supervisor_ui --features ovm --locked --force"
 build-cli = "build --package txtx-cli --no-default-features --features cli"
 build-cli-release = "build --package txtx-cli --no-default-features --features cli --release"
+test-cli = "test --package txtx-cli --no-default-features --features cli"
+test-cli-doctor = "test --package txtx-cli --no-default-features --features cli doctor"
 
 [build]
 rustflags = ["--cfg", "tokio_unstable"]

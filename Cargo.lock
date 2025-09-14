@@ -14945,12 +14945,14 @@ dependencies = [
  "lsp-types",
  "openssl",
  "openssl-sys",
+ "regex",
  "rusqlite",
  "serde",
  "serde_derive",
  "serde_json",
  "test-case",
  "tokio",
+ "toml 0.8.19",
  "txtx-addon-kit",
  "txtx-addon-network-bitcoin",
  "txtx-addon-network-evm",
@@ -15035,32 +15037,6 @@ dependencies = [
  "juniper_codegen",
  "tokio",
  "txtx-addon-kit",
-]
-
-[[package]]
-name = "txtx-lsp"
-version = "0.4.3"
-dependencies = [
- "console_error_panic_hook",
- "js-sys",
- "lazy_static",
- "lsp-types",
- "regex",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "tempfile",
- "tokio",
- "txtx-addon-kit",
- "txtx-addon-network-bitcoin",
- "txtx-addon-network-evm",
- "txtx-addon-network-ovm",
- "txtx-addon-network-svm",
- "txtx-addon-telegram",
- "txtx-core",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
