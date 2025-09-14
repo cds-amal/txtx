@@ -1,7 +1,8 @@
 mod state;
 mod documents;
 mod manifests;
+pub mod manifest_converter;
 
 pub use state::SharedWorkspaceState;
 pub use documents::Document;
-pub use manifests::Manifest;
+pub use manifests::{Manifest, RunbookRef};
