@@ -1,0 +1,7 @@
+Starting txtx Language Server
+Initialize params: Some(Url { scheme: "file", cannot_be_a_base: false, username: "", password: None, host: None, port: None, path: "/Users/amal/dev/tx/txtx/test-workspace", query: None, fragment: None })
+LSP server initialized successfully
+Received notification: textDocument/didOpen
+[did_open] file:///Users/amal/dev/tx/txtx/test-workspace/test_validation.tx
+  Found manifest at: file:///Users/amal/dev/tx/txtx/test-workspace/txtx.yml
+Received request: shutdown

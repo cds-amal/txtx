@@ -1,0 +1,13 @@
+// Test file with validation errors
+
+action "test" "evm::deploy_contract" {
+  // This should trigger an error - flow.chain_id doesn't exist
+  chain_id = flow.chain_id
+  contract_address = inputs.contract_address
+  private_key = inputs.private_key
+}
+
+// Missing action reference should trigger error
+output "result" {
+  value = action.nonexistent.result
+}

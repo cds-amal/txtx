@@ -1,0 +1,28 @@
+// Deploy contract runbook
+// Test go-to-definition on the inputs below
+
+flow "super1" {
+  chain_id = 1  // Or whatever value you want
+}
+
+signer "deployer" "evm::web_wallet" {
+  private_key = inputs.private_key
+}
+
+action "deploy" "evm::deploy_contract" {
+  abi = evi::get_abi_from_foundation("SimpleStorage")
+  constructor_args = [
+    flow.chain_id
+  ]
+  signer = signer.deployer
+}
+
+output "contract_address" {
+  value = action.deploy.contract_address
+}
+
+output "api_used" {
+  // This should also work for go-to-definition
+  value = inputs.api_url
+  chain_id = var.chain_id
+}
