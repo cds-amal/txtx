@@ -29,7 +29,7 @@ impl DiagnosticsHandler {
             let manifest = workspace.get_manifest_for_document(uri);
             eprintln!("[DEBUG] Diagnostics handler - manifest found: {}", manifest.is_some());
             
-            // Use multi-file aware validation
+            // Use HCL-integrated validation (per ADR-002)
             if let Some(manifest) = manifest {
                 crate::cli::lsp::diagnostics_multi_file::validate_with_multi_file_support(
                     uri,
@@ -39,8 +39,8 @@ impl DiagnosticsHandler {
                     &[], // TODO: Get CLI inputs from workspace state
                 )
             } else {
-                // Fall back to basic HCL validation
-                crate::cli::lsp::diagnostics::validate_runbook(uri, document.content())
+                // Use new HCL-integrated validation that provides better diagnostics
+                crate::cli::lsp::diagnostics_hcl_integrated::validate_runbook_with_hcl(uri, document.content())
             }
         } else {
             Vec::new()
