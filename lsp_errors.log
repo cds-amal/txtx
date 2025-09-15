@@ -1,0 +1,3 @@
+Starting txtx Language Server
+Initialize params: Some(Url { scheme: "file", cannot_be_a_base: false, username: "", password: None, host: None, port: None, path: "/Users/amal/dev/tx/txtx/tests/fixtures/doctor/separate-flows-file", query: None, fragment: None })
+LSP server error: disconnected channel
