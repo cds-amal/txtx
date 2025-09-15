@@ -83,6 +83,7 @@ pub struct ExecutionResult {
 /// 
 /// assert!(result.success);
 /// ```
+#[derive(Clone)]
 pub struct RunbookBuilder {
     /// The main runbook content
     content: String,
@@ -101,6 +102,7 @@ pub struct RunbookBuilder {
 }
 
 /// Configuration for a mock blockchain
+#[derive(Clone)]
 pub struct MockConfig {
     pub chain_type: String,
     pub initial_state: serde_json::Value,
