@@ -14,6 +14,7 @@ members = [
     "crates/txtx-cloud",
     "crates/txtx-supervisor-ui",
     "crates/txtx-serve",
+    "crates/txtx-test-utils",
     "addons/bitcoin",
     "addons/evm",
     "addons/ovm",

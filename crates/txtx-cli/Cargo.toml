@@ -75,3 +75,4 @@ stacks = ["txtx-addon-network-stacks"]
 [dev-dependencies]
 test-case = "*"
 serde_json = "1"
+txtx-test-utils = { path = "../txtx-test-utils" }

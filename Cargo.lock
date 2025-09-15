@@ -14990,6 +14990,7 @@ dependencies = [
  "txtx-gql",
  "txtx-serve",
  "txtx-supervisor-ui",
+ "txtx-test-utils",
  "unicode-width 0.2.0",
 ]
 
