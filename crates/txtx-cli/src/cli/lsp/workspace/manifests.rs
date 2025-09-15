@@ -1,6 +1,6 @@
 //! Manifest parsing and management for the LSP workspace
 //! 
-//! This module handles parsing and indexing of Txtx.toml manifest files,
+//! This module handles parsing and indexing of txtx.yml manifest files,
 //! including tracking runbook references and environment configurations.
 
 use lsp_types::Url;
@@ -114,16 +114,14 @@ pub fn find_manifest_for_runbook(runbook_uri: &Url) -> Option<Url> {
     let runbook_path = runbook_uri.to_file_path().ok()?;
     let mut current_dir = runbook_path.parent()?;
     
-    // Walk up the directory tree looking for Txtx.toml
+    // Walk up the directory tree looking for txtx.yml
     loop {
         // Check for various manifest file names
         let manifest_candidates = [
-            "Txtx.toml",
-            "txtx.toml",
-            "Txtx.yml",
             "txtx.yml",
-            "Txtx.yaml",
             "txtx.yaml",
+            "Txtx.yml",
+            "Txtx.yaml",
         ];
         
         for candidate in &manifest_candidates {
@@ -144,20 +142,22 @@ mod tests {
     #[test]
     fn test_manifest_parsing() {
         let content = r#"
-            [runbooks]
-            deploy = "runbooks/deploy.tx"
-            test = "runbooks/test.tx"
-            
-            [environments.prod]
-            api_key = "prod_key"
-            url = "https://prod.example.com"
-            
-            [environments.dev]
-            api_key = "dev_key"
-            url = "https://dev.example.com"
+runbooks:
+  - name: deploy
+    location: runbooks/deploy.tx
+  - name: test
+    location: runbooks/test.tx
+
+environments:
+  prod:
+    api_key: prod_key
+    url: https://prod.example.com
+  dev:
+    api_key: dev_key
+    url: https://dev.example.com
         "#;
         
-        let uri = Url::parse("file:///project/Txtx.toml").unwrap();
+        let uri = Url::parse("file:///project/txtx.yml").unwrap();
         let manifest = Manifest::parse(uri, content).unwrap();
         
         assert_eq!(manifest.runbooks.len(), 2);

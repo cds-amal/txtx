@@ -203,13 +203,15 @@ mod tests {
     #[test]
     fn test_manifest_indexing() {
         let mut workspace = WorkspaceState::new();
-        let manifest_uri = Url::parse("file:///project/Txtx.toml").unwrap();
+        let manifest_uri = Url::parse("file:///project/txtx.yml").unwrap();
         let manifest_content = r#"
-            [runbooks]
-            deploy = "runbooks/deploy.tx"
-            
-            [environments.prod]
-            api_key = "prod_key"
+runbooks:
+  - name: deploy
+    location: runbooks/deploy.tx
+
+environments:
+  prod:
+    api_key: prod_key
         "#;
         
         workspace.open_document(manifest_uri.clone(), manifest_content.to_string());

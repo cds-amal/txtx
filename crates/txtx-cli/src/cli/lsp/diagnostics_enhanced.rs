@@ -201,7 +201,7 @@ mod tests {
         
         // Create a manifest without the required input
         let manifest = Manifest {
-            uri: Url::parse("file:///Txtx.toml").unwrap(),
+            uri: Url::parse("file:///txtx.yml").unwrap(),
             runbooks: vec![],
             environments: HashMap::new(),
         };
@@ -238,7 +238,7 @@ mod tests {
         environments.insert("production".to_string(), prod_env);
         
         let manifest = Manifest {
-            uri: Url::parse("file:///Txtx.toml").unwrap(),
+            uri: Url::parse("file:///txtx.yml").unwrap(),
             runbooks: vec![],
             environments,
         };

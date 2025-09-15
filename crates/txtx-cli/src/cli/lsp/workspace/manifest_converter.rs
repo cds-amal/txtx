@@ -75,7 +75,7 @@ mod tests {
         environments.insert("global".to_string(), global_env);
 
         let lsp_manifest = LspManifest {
-            uri: Url::parse("file:///test/Txtx.toml").unwrap(),
+            uri: Url::parse("file:///test/txtx.yml").unwrap(),
             runbooks: vec![],
             environments,
         };

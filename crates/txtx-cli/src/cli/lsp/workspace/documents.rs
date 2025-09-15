@@ -39,12 +39,11 @@ impl Document {
         self.version
     }
     
-    /// Check if this is a manifest file (Txtx.toml, Txtx.yml, or Txtx.yaml)
+    /// Check if this is a manifest file (txtx.yml or txtx.yaml)
     pub fn is_manifest(&self) -> bool {
         let path = self.uri.path();
-        path.ends_with("Txtx.toml") || path.ends_with("txtx.toml") ||
-        path.ends_with("Txtx.yml") || path.ends_with("txtx.yml") ||
-        path.ends_with("Txtx.yaml") || path.ends_with("txtx.yaml")
+        path.ends_with("txtx.yml") || path.ends_with("txtx.yaml") ||
+        path.ends_with("Txtx.yml") || path.ends_with("Txtx.yaml")
     }
     
     /// Check if this is a runbook file (.tx)
@@ -81,7 +80,7 @@ mod tests {
     #[test]
     fn test_document_type_detection() {
         let manifest = Document::new(
-            Url::parse("file:///Txtx.toml").unwrap(),
+            Url::parse("file:///txtx.yml").unwrap(),
             "".to_string()
         );
         assert!(manifest.is_manifest());
