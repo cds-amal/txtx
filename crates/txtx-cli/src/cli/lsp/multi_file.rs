@@ -6,7 +6,8 @@
 use lsp_types::Url;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use txtx_core::runbook_file::{read_runbook_from_location, FileLocation};
+use txtx_core::manifest::file::read_runbook_from_location;
+use txtx_addon_kit::helpers::fs::FileLocation;
 
 /// Information about a multi-file runbook
 #[derive(Debug, Clone)]
@@ -47,7 +48,7 @@ pub fn load_multi_file_runbook(
     // Use the same function as doctor to load the runbook
     let (_, _, runbook_sources) = read_runbook_from_location(
         &file_location,
-        &runbook_name.into(),
+        &Some(runbook_name.to_string()),
         &None,
         Some(runbook_name),
     )?;
@@ -59,7 +60,7 @@ pub fn load_multi_file_runbook(
     
     // Process each file in the runbook
     for (file_location, (_name, raw_content)) in &runbook_sources.tree {
-        let file_path = PathBuf::from(file_location);
+        let file_path = PathBuf::from(file_location.to_string());
         let file_uri = Url::from_file_path(&file_path)
             .map_err(|_| format!("Invalid file path: {}", file_path.display()))?;
         
