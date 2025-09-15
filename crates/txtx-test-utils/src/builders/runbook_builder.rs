@@ -89,11 +89,11 @@ pub struct RunbookBuilder {
     /// Additional files for multi-file runbooks
     files: HashMap<String, String>,
     /// Environment variables by environment name
-    environments: HashMap<String, HashMap<String, String>>,
+    pub(crate) environments: HashMap<String, HashMap<String, String>>,
     /// Mock blockchain configurations
     mocks: HashMap<String, MockConfig>,
     /// CLI inputs
-    cli_inputs: HashMap<String, String>,
+    pub(crate) cli_inputs: HashMap<String, String>,
     /// Current building state for fluent API
     building_content: Vec<String>,
     /// Current action being built
@@ -242,7 +242,7 @@ signer "{}" "{}" {{
     }
     
     /// Build the final content
-    fn build_content(&mut self) -> String {
+    pub(crate) fn build_content(&mut self) -> String {
         // Close any open action
         if self.current_action.is_some() {
             self.building_content.push("}".to_string());
