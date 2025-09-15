@@ -96,12 +96,8 @@ impl RunbookBuilder {
     
     /// Validate the runbook without execution
     pub fn validate(&self) -> ValidationResult {
-        // TODO: Implement actual validation
-        // For now, return a placeholder
-        ValidationResult {
-            success: true,
-            errors: vec![],
-        }
+        // Use the simple validator
+        crate::simple_validator::validate_content(&self.content)
     }
     
     /// Execute the runbook
