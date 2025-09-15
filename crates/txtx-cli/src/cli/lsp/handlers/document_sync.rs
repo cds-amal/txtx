@@ -46,7 +46,7 @@ impl DocumentSyncHandler {
             let manifest = workspace.get_manifest_for_document(uri);
             
             if let Some(manifest) = manifest {
-                crate::cli::lsp::diagnostics_enhanced::validate_runbook_with_doctor_rules(
+                crate::cli::lsp::diagnostics_multi_file::validate_with_multi_file_support(
                     uri,
                     document.content(),
                     Some(manifest),

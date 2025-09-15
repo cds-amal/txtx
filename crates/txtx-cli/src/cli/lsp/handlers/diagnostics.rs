@@ -28,9 +28,9 @@ impl DiagnosticsHandler {
             // Try to find the manifest for this runbook
             let manifest = workspace.get_manifest_for_document(uri);
             
-            // Use enhanced validation with doctor rules if we have a manifest
+            // Use multi-file aware validation
             if let Some(manifest) = manifest {
-                crate::cli::lsp::diagnostics_enhanced::validate_runbook_with_doctor_rules(
+                crate::cli::lsp::diagnostics_multi_file::validate_with_multi_file_support(
                     uri,
                     document.content(),
                     Some(manifest),
@@ -61,9 +61,9 @@ impl DiagnosticsHandler {
                 // Try to find the manifest for this runbook
                 let manifest = workspace.get_manifest_for_document(uri);
                 
-                // Use enhanced validation with doctor rules if we have a manifest
+                // Use multi-file aware validation
                 if let Some(manifest) = manifest {
-                    crate::cli::lsp::diagnostics_enhanced::validate_runbook_with_doctor_rules(
+                    crate::cli::lsp::diagnostics_multi_file::validate_with_multi_file_support(
                         uri,
                         document.content(),
                         Some(manifest),

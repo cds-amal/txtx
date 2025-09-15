@@ -4,7 +4,9 @@ mod functions;
 mod utils;
 mod diagnostics;
 mod diagnostics_enhanced;
+mod diagnostics_multi_file;
 mod validation;
+mod multi_file;
 
 #[cfg(test)]
 mod tests;
