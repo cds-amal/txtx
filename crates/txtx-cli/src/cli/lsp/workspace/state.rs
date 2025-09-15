@@ -106,8 +106,10 @@ impl WorkspaceState {
     
     /// Parse and index a manifest
     fn index_manifest(&mut self, uri: &Url, content: &str) {
+        eprintln!("[DEBUG] Indexing manifest: {}", uri);
         match Manifest::parse(uri.clone(), content) {
             Ok(manifest) => {
+                eprintln!("[DEBUG] Manifest parsed successfully with {} runbooks", manifest.runbooks.len());
                 // Update environment cache
                 for (env_name, vars) in &manifest.environments {
                     self.environment_vars.insert(env_name.clone(), vars.clone());

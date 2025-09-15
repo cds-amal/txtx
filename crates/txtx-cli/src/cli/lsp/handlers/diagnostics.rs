@@ -27,6 +27,7 @@ impl DiagnosticsHandler {
         let diagnostics = if document.is_runbook() {
             // Try to find the manifest for this runbook
             let manifest = workspace.get_manifest_for_document(uri);
+            eprintln!("[DEBUG] Diagnostics handler - manifest found: {}", manifest.is_some());
             
             // Use multi-file aware validation
             if let Some(manifest) = manifest {

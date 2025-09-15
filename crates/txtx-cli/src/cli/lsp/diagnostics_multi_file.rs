@@ -23,9 +23,13 @@ pub fn validate_with_multi_file_support(
     environment: Option<&str>,
     cli_inputs: &[(String, String)],
 ) -> Vec<Diagnostic> {
+    eprintln!("[DEBUG] validate_with_multi_file_support called for: {}", file_uri);
+    
     // Check if this file is part of a multi-file runbook
     if let Some(manifest) = lsp_manifest {
+        eprintln!("[DEBUG] Manifest found, checking for runbook name");
         if let Some(runbook_name) = get_runbook_name_for_file(file_uri, manifest) {
+            eprintln!("[DEBUG] Found runbook name: {}", runbook_name);
             // Find the runbook in the manifest
             if let Some(runbook) = manifest.runbooks.iter().find(|r| r.name == runbook_name) {
                 // Check if the runbook location is a directory
@@ -34,7 +38,9 @@ pub fn validate_with_multi_file_support(
                         .map(|p| p.join(&runbook.location))
                         .unwrap_or_else(|| runbook.location.clone().into());
                     
+                    eprintln!("[DEBUG] Runbook path: {:?}, is_dir: {}", runbook_path, runbook_path.is_dir());
                     if runbook_path.is_dir() {
+                        eprintln!("[DEBUG] This is a multi-file runbook, calling validate_multi_file_runbook");
                         // This is a multi-file runbook
                         return validate_multi_file_runbook(
                             file_uri,
@@ -44,6 +50,8 @@ pub fn validate_with_multi_file_support(
                             environment,
                             cli_inputs,
                         );
+                    } else {
+                        eprintln!("[DEBUG] Not a directory, falling back to single file");
                     }
                 }
             }

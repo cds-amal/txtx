@@ -108,17 +108,22 @@ pub fn get_runbook_name_for_file(
     manifest: &crate::cli::lsp::workspace::Manifest,
 ) -> Option<String> {
     let file_path = PathBuf::from(file_uri.path());
+    eprintln!("[DEBUG] get_runbook_name_for_file: checking file_path: {:?}", file_path);
+    eprintln!("[DEBUG] Manifest has {} runbooks", manifest.runbooks.len());
     
     // Check each runbook in the manifest
     for runbook in &manifest.runbooks {
+        eprintln!("[DEBUG] Checking runbook: {} with location: {}", runbook.name, runbook.location);
         let runbook_path = if let Some(base) = manifest.uri.to_file_path().ok() {
             base.parent()?.join(&runbook.location)
         } else {
             PathBuf::from(&runbook.location)
         };
         
+        eprintln!("[DEBUG] Checking if {:?} starts with {:?}", file_path, runbook_path);
         // Check if the file is inside this runbook's directory
         if file_path.starts_with(&runbook_path) {
+            eprintln!("[DEBUG] Match found! Returning runbook name: {}", runbook.name);
             return Some(runbook.name.clone());
         }
     }
