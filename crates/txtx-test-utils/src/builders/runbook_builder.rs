@@ -242,7 +242,7 @@ signer "{}" "{}" {{
     }
     
     /// Build the final content
-    pub(crate) fn build_content(&mut self) -> String {
+    pub fn build_content(&mut self) -> String {
         // Close any open action
         if self.current_action.is_some() {
             self.building_content.push("}".to_string());

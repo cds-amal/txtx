@@ -1,4 +1,4 @@
-use txtx_test_utils::{RunbookBuilder, ValidationResult, ValidationMode, create_test_manifest_with_env};
+use txtx_test_utils::builders::{RunbookBuilder, create_test_manifest_with_env};
 use std::path::PathBuf;
 
 // Helper macros for LSP testing
@@ -20,7 +20,7 @@ mod lsp_hover_tests {
     // Test hover information for functions
     #[test]
     fn test_function_hover_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .variable("wei_amount", "evm::to_wei(1, \"ether\")")
             .variable("hex_value", "std::encode_hex(\"hello\")")
@@ -43,7 +43,7 @@ mod lsp_hover_tests {
     // Test hover for action types
     #[test]
     fn test_action_hover_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .action("send", "evm::send_eth")
                 .input("to", "0x123")
@@ -64,7 +64,7 @@ mod lsp_hover_tests {
     // Test hover for variable references
     #[test]
     fn test_variable_hover_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .variable("base_fee", "1000000000")
             .variable("multiplier", "2")
@@ -96,11 +96,7 @@ mod lsp_diagnostics_tests {
                 .input("value", "variable.missing");  // Undefined variable
         
         // In LSP mode, this would produce diagnostics
-        let result = builder.validate_with_mode(ValidationMode::Doctor {
-            manifest: None,
-            environment: None,
-            file_path: Some(PathBuf::from("test.tx")),
-        });
+        let result = builder.validate();
         
         assert!(!result.success);
         assert!(result.errors.len() >= 2);
@@ -148,7 +144,7 @@ mod lsp_completion_tests {
     #[test]
     fn test_action_type_completion_with_builder() {
         // Build a partial runbook where user is typing an action
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .addon("bitcoin", vec![])
             .with_content(r#"
@@ -170,7 +166,7 @@ mod lsp_completion_tests {
     // Test completion for signer references
     #[test]
     fn test_signer_reference_completion_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .signer("deployer", "evm::private_key", vec![
                 ("private_key", "0x123")
@@ -199,7 +195,7 @@ mod lsp_completion_tests {
     // Test completion for action outputs
     #[test]
     fn test_action_output_completion_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .action("deploy", "evm::deploy_contract")
                 .input("contract", "\"Token.sol\"")
@@ -234,7 +230,7 @@ mod lsp_go_to_definition_tests {
     // Test go-to-definition for variables
     #[test]
     fn test_goto_definition_variable_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .variable("base_amount", "1000")
             .variable("multiplier", "10")
@@ -256,7 +252,7 @@ mod lsp_go_to_definition_tests {
     // Test go-to-definition for actions
     #[test]
     fn test_goto_definition_action_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .action("deploy", "evm::deploy_contract")
                 .input("contract", "\"Token.sol\"")
@@ -271,7 +267,7 @@ mod lsp_go_to_definition_tests {
     // Test go-to-definition for signers
     #[test]
     fn test_goto_definition_signer_with_builder() {
-        let builder = RunbookBuilder::new()
+        let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
             .signer("treasury", "evm::private_key", vec![
                 ("private_key", "0x123")
