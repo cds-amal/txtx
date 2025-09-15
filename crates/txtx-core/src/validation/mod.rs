@@ -5,6 +5,7 @@
 
 pub mod addon_specifications;
 pub mod hcl_validator;
+pub mod hcl_diagnostics;
 pub mod types;
 pub mod validator;
 
