@@ -26,40 +26,53 @@ pub struct RunbookRef {
 impl Manifest {
     /// Parse a manifest from content
     pub fn parse(uri: Url, content: &str) -> Result<Self, String> {
-        // Parse TOML content
-        let toml_value: toml::Value = toml::from_str(content)
-            .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+        // Parse YAML content
+        let yaml_value: serde_yml::Value = serde_yml::from_str(content)
+            .map_err(|e| format!("Failed to parse YAML: {}", e))?;
         
-        let toml_table = toml_value.as_table()
-            .ok_or("Expected TOML table at root")?;
+        let yaml_mapping = yaml_value.as_mapping()
+            .ok_or("Expected YAML mapping at root")?;
         
         // Extract runbooks
         let mut runbooks = Vec::new();
-        if let Some(runbooks_section) = toml_table.get("runbooks").and_then(|v| v.as_table()) {
-            for (name, value) in runbooks_section {
-                if let Some(location) = value.as_str() {
-                    let absolute_uri = resolve_runbook_uri(&uri, location).ok();
-                    runbooks.push(RunbookRef {
-                        name: name.clone(),
-                        location: location.to_string(),
-                        absolute_uri,
-                    });
+        if let Some(runbooks_section) = yaml_mapping.get(&serde_yml::Value::String("runbooks".to_string())) {
+            if let Some(runbooks_sequence) = runbooks_section.as_sequence() {
+                for runbook_entry in runbooks_sequence {
+                    if let Some(runbook_map) = runbook_entry.as_mapping() {
+                        let name = runbook_map.get(&serde_yml::Value::String("name".to_string()))
+                            .and_then(|v| v.as_str())
+                            .ok_or("Runbook missing 'name' field")?;
+                        let location = runbook_map.get(&serde_yml::Value::String("location".to_string()))
+                            .and_then(|v| v.as_str())
+                            .ok_or("Runbook missing 'location' field")?;
+                        
+                        let absolute_uri = resolve_runbook_uri(&uri, location).ok();
+                        runbooks.push(RunbookRef {
+                            name: name.to_string(),
+                            location: location.to_string(),
+                            absolute_uri,
+                        });
+                    }
                 }
             }
         }
         
         // Extract environments
         let mut environments = HashMap::new();
-        if let Some(envs_section) = toml_table.get("environments").and_then(|v| v.as_table()) {
-            for (env_name, env_value) in envs_section {
-                if let Some(env_table) = env_value.as_table() {
-                    let mut env_vars = HashMap::new();
-                    for (key, value) in env_table {
-                        if let Some(str_value) = value.as_str() {
-                            env_vars.insert(key.clone(), str_value.to_string());
+        if let Some(envs_section) = yaml_mapping.get(&serde_yml::Value::String("environments".to_string())) {
+            if let Some(envs_map) = envs_section.as_mapping() {
+                for (env_key, env_value) in envs_map {
+                    if let Some(env_name) = env_key.as_str() {
+                        if let Some(env_map) = env_value.as_mapping() {
+                            let mut env_vars = HashMap::new();
+                            for (key, value) in env_map {
+                                if let (Some(k), Some(v)) = (key.as_str(), value.as_str()) {
+                                    env_vars.insert(k.to_string(), v.to_string());
+                                }
+                            }
+                            environments.insert(env_name.to_string(), env_vars);
                         }
                     }
-                    environments.insert(env_name.clone(), env_vars);
                 }
             }
         }

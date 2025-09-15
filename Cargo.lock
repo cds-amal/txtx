@@ -7010,6 +7010,12 @@ dependencies = [
 
 [[package]]
 name = "libyml"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e281a65eeba3d4503a2839252f86374528f9ceafe6fed97c1d3b52e1fb625c1"
+
+[[package]]
+name = "libyml"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64804cc6a5042d4f05379909ba25b503ec04e2c082151d62122d5dcaa274b961"
@@ -10218,13 +10224,30 @@ dependencies = [
 
 [[package]]
 name = "serde_yml"
+version = "0.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78ce6afeda22f0b55dde2c34897bce76a629587348480384231205c14b59a01f"
+dependencies = [
+ "indexmap 2.8.0",
+ "itoa",
+ "libyml 0.0.3",
+ "log 0.4.27",
+ "memchr",
+ "ryu",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "serde_yml"
 version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48e76bab63c3fd98d27c17f9cbce177f64a91f5e69ac04cafe04e1bb25d1dc3c"
 dependencies = [
  "indexmap 2.8.0",
  "itoa",
- "libyml",
+ "libyml 0.0.4",
  "log 0.4.27",
  "memchr",
  "ryu",
@@ -14950,6 +14973,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+ "serde_yml 0.0.10",
  "test-case",
  "tokio",
  "toml 0.8.19",
@@ -15018,7 +15042,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_with 3.12.0",
- "serde_yml",
+ "serde_yml 0.0.11",
  "similar",
  "test-case",
  "tokio",
