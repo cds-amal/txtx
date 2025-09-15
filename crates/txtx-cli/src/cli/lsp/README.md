@@ -58,12 +58,14 @@ pub trait Handler: Send + Sync {
 - ✅ Hover documentation for actions
 - ✅ Document synchronization
 - ✅ Workspace symbol search
+- ✅ HCL-integrated diagnostics (per ADR-002)
+- ✅ Real-time validation with doctor rules
 
 ### Pending
-- ⏳ Real-time diagnostics (doctor validation integration)
 - ⏳ Code actions (quick fixes)
 - ⏳ Rename refactoring
 - ⏳ Formatting
+- ⏳ Enhanced HCL error position extraction
 
 ## Usage
 
@@ -111,12 +113,24 @@ impl Handler for MyHandler {
 router.register(Box::new(MyHandler));
 ```
 
-### Doctor Integration
+### Validation Architecture (ADR-002)
 
-The validation framework is designed to reuse doctor validation rules:
-- `DoctorValidationAdapter` wraps doctor rules for LSP use
-- `validation_outcome_to_diagnostic` converts doctor outcomes to LSP diagnostics
-- Currently disabled due to manifest type mismatch (see TODO)
+The LSP now integrates HCL parser diagnostics directly:
+
+1. **HCL Syntax Validation**: 
+   - `diagnostics_hcl_integrated.rs` parses HCL and extracts syntax errors
+   - Error positions are extracted from HCL error messages
+   - Provides immediate feedback for syntax issues
+
+2. **Semantic Validation**:
+   - Uses existing `hcl_validator` for semantic checks
+   - Validates action types, signer references, undefined fields
+   - Multi-file support through `diagnostics_multi_file.rs`
+
+3. **Doctor Integration**:
+   - `DoctorValidationAdapter` wraps doctor rules for LSP use
+   - `validation_outcome_to_diagnostic` converts doctor outcomes to LSP diagnostics
+   - Provides additional project-specific validation rules
 
 ## Testing
 
