@@ -17,6 +17,10 @@ test-cli-int = "test --package txtx-cli --tests --no-default-features --features
 test-cli-int-doctor = "test --package txtx-cli --test doctor_tests_builder --no-default-features --features cli"
 test-cli-int-lsp = "test --package txtx-cli --test lsp_tests_builder --no-default-features --features cli"
 
+# HCL validation tests
+test-hcl-diagnostics = "test --package txtx-cli --bin txtx --no-default-features --features cli cli::lsp::tests::hcl_diagnostics_test"  # Test HCL diagnostic extraction
+test-lsp-validation = "test --package txtx-cli --bin txtx --no-default-features --features cli cli::lsp::tests::validation_integration_test"  # Test LSP validation pipeline
+
 # Convenience aliases (legacy support)
 test-cli = "test --package txtx-cli --no-default-features --features cli"  # All CLI tests
 test-cli-doctor = "test --package txtx-cli --bin txtx --no-default-features --features cli cli::doctor::"  # Legacy alias
