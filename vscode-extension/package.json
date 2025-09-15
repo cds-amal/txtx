@@ -71,11 +71,12 @@
   },
   "scripts": {
     "compile": "node build.js",
+    "compile:production": "NODE_ENV=production node build.js",
     "compile-tests": "tsc -p ./tsconfig.test.json",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile-tests",
     "test": "node ./out/test/runTest.js",
-    "package": "npm run compile && vsce package --allow-missing-repository",
+    "package": "npm run compile:production && vsce package --allow-missing-repository",
     "build": "npm run package"
   },
   "keywords": [

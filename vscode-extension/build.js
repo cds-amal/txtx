@@ -1,5 +1,7 @@
 const esbuild = require('esbuild');
 
+const isProduction = process.env.NODE_ENV === 'production' || process.argv.includes('--production');
+
 esbuild.build({
     entryPoints: ['./src/extension.ts'],
     bundle: true,
@@ -8,6 +10,8 @@ esbuild.build({
     target: 'node16',
     outfile: 'out/extension.js',
     format: 'cjs',
-    sourcemap: true,
-    minify: false
+    sourcemap: !isProduction,
+    minify: isProduction,
+    treeShaking: true,
+    legalComments: isProduction ? 'none' : 'inline'
 }).catch(() => process.exit(1));
