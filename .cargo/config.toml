@@ -14,9 +14,8 @@ test-addon-kit-unit = "test --package txtx-addon-kit --lib"
 
 # Integration tests (code in tests/)
 test-cli-int = "test --package txtx-cli --tests --no-default-features --features cli"
-test-cli-int-doctor = "test --package txtx-cli --test doctor_tests --no-default-features --features cli"
-test-cli-int-doctor-new = "test --package txtx-cli --test doctor_tests_improved --no-default-features --features cli"
-test-cli-int-lsp = "test --package txtx-cli --test lsp_hover_test --no-default-features --features cli"
+test-cli-int-doctor = "test --package txtx-cli --test doctor_tests_builder --no-default-features --features cli"
+test-cli-int-lsp = "test --package txtx-cli --test lsp_tests_builder --no-default-features --features cli"
 
 # Convenience aliases (legacy support)
 test-cli = "test --package txtx-cli --no-default-features --features cli"  # All CLI tests
