@@ -3,10 +3,12 @@ txtx-install = "install --path crates/txtx-cli --features supervisor_ui --featur
 build-cli = "build --package txtx-cli --no-default-features --features cli"
 build-cli-release = "build --package txtx-cli --no-default-features --features cli --release"
 test-cli = "test --package txtx-cli --no-default-features --features cli"
-test-cli-doctor = "test --package txtx-cli --no-default-features --features cli doctor"
+test-cli-doctor = "test --package txtx-cli --bin txtx --no-default-features --features cli cli::doctor::"
 # QA improvement aliases
 # Note: Use test-cli for testing without supervisor UI build issues
 # The supervisor UI is an optional dependency of txtx-cli, so we need to disable default features
+test-doctor-integration = "test --package txtx-cli --test doctor_tests --no-default-features --features cli"
+test-doctor-improved = "test --package txtx-cli --test doctor_tests_improved --no-default-features --features cli"
 
 [build]
 rustflags = ["--cfg", "tokio_unstable"]
