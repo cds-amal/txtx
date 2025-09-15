@@ -5,8 +5,10 @@
 
 use std::collections::HashMap;
 use txtx_addon_kit::types::diagnostics::Diagnostic;
+use txtx_addon_kit::serde_json;
 
 /// Result of parsing a runbook
+#[derive(Debug, Clone)]
 pub struct ParseResult {
     pub success: bool,
     pub errors: Vec<Diagnostic>,

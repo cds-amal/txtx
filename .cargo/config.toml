@@ -4,6 +4,9 @@ build-cli = "build --package txtx-cli --no-default-features --features cli"
 build-cli-release = "build --package txtx-cli --no-default-features --features cli --release"
 test-cli = "test --package txtx-cli --no-default-features --features cli"
 test-cli-doctor = "test --package txtx-cli --no-default-features --features cli doctor"
+# QA improvement aliases
+test-quick = "test --workspace --exclude txtx-supervisor-ui --exclude txtx-serve --exclude txtx-addon-network-stacks"
+test-all = "test --workspace --exclude txtx-addon-network-stacks"
 
 [build]
 rustflags = ["--cfg", "tokio_unstable"]

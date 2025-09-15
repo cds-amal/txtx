@@ -2,4 +2,4 @@
 
 mod runbook_builder;
 
-pub use runbook_builder::RunbookBuilder;
+pub use runbook_builder::{RunbookBuilder, ParseResult, ValidationResult, ExecutionResult, MockConfig};
