@@ -78,8 +78,50 @@ cargo test-cli-unit test_input_defined_rule
 cargo test-cli-int validation
 ```
 
+## RunbookBuilder vs Integration Tests
+
+### When to Use RunbookBuilder
+The `RunbookBuilder` in `txtx-test-utils` is ideal for:
+- Unit testing HCL syntax validation
+- Testing basic semantic errors (unknown namespaces, action types)
+- Quick validation tests that focus on runbook structure
+- Reducing boilerplate in test code
+
+### When to Use Integration Tests
+Keep integration tests for scenarios that RunbookBuilder cannot handle:
+- **Doctor-specific validation**: Undefined signers, invalid field access, cross-references
+- **Multi-file runbooks**: Testing file imports and includes
+- **Command behavior**: Testing exact error messages, line numbers, JSON output
+- **Flow validation**: Testing flow variables and flow-specific rules
+- **Full validation pipeline**: When you need the complete doctor analysis
+
+### Example Decision
+```rust
+// ✅ Use RunbookBuilder for basic validation
+#[test]
+fn test_unknown_namespace() {
+    let result = RunbookBuilder::new()
+        .action("test", "invalid::action")
+        .validate();
+    assert_validation_error!(result, "Unknown addon namespace");
+}
+
+// ❌ Use integration test for doctor-specific checks
+#[test]
+fn test_undefined_signer_reference() {
+    // This needs the full doctor command to catch the error
+    let output = Command::new("txtx")
+        .arg("doctor")
+        .arg("fixture.tx")
+        .output()
+        .unwrap();
+    // Doctor catches undefined signer refs that RunbookBuilder doesn't
+}
+```
+
 ## Notes
 
 - All CLI test aliases use `--no-default-features --features cli` to avoid building the supervisor UI
 - The supervisor UI is an optional dependency that significantly increases build time
 - Use the specific aliases to run only the tests you need during development
+- RunbookBuilder uses `txtx_core::validation::hcl_validator` which provides HCL parsing but not the full doctor analysis

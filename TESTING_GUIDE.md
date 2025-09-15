@@ -34,25 +34,58 @@ cargo test-quick -- --nocapture
 
 ### Using RunbookBuilder (Recommended)
 
-The `RunbookBuilder` provides a simple API for creating test scenarios:
+The `RunbookBuilder` provides a simple API for creating test scenarios with HCL validation:
 
 ```rust
-use txtx_test_utils::RunbookBuilder;
+use txtx_test_utils::{RunbookBuilder, assert_validation_error, assert_success};
 
 #[test]
 fn test_undefined_variable() {
     let result = RunbookBuilder::new()
-        .with_content(r#"
-            action "test" "core::print" {
-                message = input.undefined_var
-            }
-        "#)
+        .addon("std", vec![])
+        .action("test", "std::print")
+            .input("message", "input.undefined_var")
         .validate();
         
-    assert!(!result.success);
-    assert!(result.errors.iter().any(|e| 
-        e.to_string().contains("undefined variable")
-    ));
+    assert_validation_error!(result, "undefined");
+}
+```
+
+#### RunbookBuilder Capabilities and Limitations
+
+**What RunbookBuilder CAN test:**
+- HCL syntax validation
+- Basic semantic errors (unknown namespaces, invalid action types)
+- Runbook structure and composition
+- Environment variable presence (but not usage validation)
+
+**What RunbookBuilder CANNOT test:**
+- Doctor command's enhanced validation:
+  - Undefined signer references
+  - Invalid action output field access
+  - Cross-references between actions
+  - Flow variable validation
+  - Input/environment variable usage validation
+- Multi-file runbook imports
+- Exact error messages and line numbers
+- Command-specific behavior (doctor, LSP, etc.)
+
+**When to use integration tests instead:**
+```rust
+// Use integration tests for doctor-specific validation
+#[test]
+fn test_doctor_catches_undefined_signer() {
+    // This requires running the actual doctor command
+    let output = Command::new("txtx")
+        .arg("doctor")
+        .arg("test.tx")
+        .output()
+        .unwrap();
+    
+    // Doctor catches errors that RunbookBuilder doesn't
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout)
+        .contains("undefined signer"));
 }
 ```
 

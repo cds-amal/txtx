@@ -27,6 +27,62 @@ pub struct ExecutionResult {
 }
 
 /// Builder for creating and testing runbooks
+/// 
+/// # Overview
+/// 
+/// `RunbookBuilder` provides a fluent API for constructing test runbooks and validating them.
+/// It simplifies test writing by offering a clean, chainable interface for building runbook
+/// content programmatically.
+/// 
+/// # Capabilities
+/// 
+/// - **HCL Syntax Validation**: Validates runbook syntax using the HCL parser
+/// - **Basic Semantic Validation**: Catches errors like unknown namespaces, invalid action types
+/// - **Fluent API**: Chain methods to build complex runbooks easily
+/// - **Environment Support**: Define environment variables for testing
+/// - **CLI Input Support**: Simulate CLI input overrides
+/// 
+/// # Limitations
+/// 
+/// `RunbookBuilder` uses `txtx_core::validation::hcl_validator` which provides HCL parsing
+/// and basic validation. It does **NOT** include the enhanced validation that the `doctor`
+/// command provides:
+/// 
+/// - **No Signer Reference Validation**: Won't catch undefined signer references
+/// - **No Action Output Validation**: Won't validate if action output fields exist
+/// - **No Cross-Reference Validation**: Won't check if referenced actions are defined
+/// - **No Flow Validation**: Won't validate flow variables or flow-specific rules
+/// - **No Multi-File Support**: Cannot test multi-file runbook imports
+/// - **No Input/Environment Validation**: Won't verify if inputs have corresponding env vars
+/// 
+/// # When to Use
+/// 
+/// Use `RunbookBuilder` for:
+/// - Testing HCL syntax correctness
+/// - Testing basic semantic errors (unknown namespaces, action types)
+/// - Unit testing runbook construction logic
+/// - Quick validation tests that don't need full doctor analysis
+/// 
+/// # When NOT to Use
+/// 
+/// Keep integration tests for:
+/// - Testing doctor command's enhanced validation
+/// - Testing specific error messages and line numbers
+/// - Testing multi-file runbooks
+/// - Testing flow validation
+/// - Testing the full validation pipeline
+/// 
+/// # Example
+/// 
+/// ```rust
+/// let result = RunbookBuilder::new()
+///     .addon("evm", vec![("network_id", "1")])
+///     .action("deploy", "evm::deploy_contract")
+///         .input("contract", "MyContract")
+///     .validate();
+/// 
+/// assert!(result.success);
+/// ```
 pub struct RunbookBuilder {
     /// The main runbook content
     content: String,
