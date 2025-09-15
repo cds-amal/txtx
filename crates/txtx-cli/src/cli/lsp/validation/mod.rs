@@ -5,6 +5,8 @@
 
 mod converter;
 mod adapter;
+mod hcl_converter;
 
 pub use adapter::DoctorValidationAdapter;
 pub use converter::validation_outcome_to_diagnostic;
+pub use hcl_converter::validation_errors_to_diagnostics;
