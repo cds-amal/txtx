@@ -33,3 +33,6 @@ tests/**/*.tmp
 tests/**/*.out
 tests/integration/target/
 *.test.tx
+
+# Serena MCP artifacts
+.serena/
