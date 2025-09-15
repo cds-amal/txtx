@@ -5,8 +5,8 @@ build-cli-release = "build --package txtx-cli --no-default-features --features c
 test-cli = "test --package txtx-cli --no-default-features --features cli"
 test-cli-doctor = "test --package txtx-cli --no-default-features --features cli doctor"
 # QA improvement aliases
-test-quick = "test --workspace --exclude txtx-supervisor-ui --exclude txtx-serve --exclude txtx-addon-network-stacks"
-test-all = "test --workspace --exclude txtx-addon-network-stacks"
+# Note: Use test-cli for testing without supervisor UI build issues
+# The supervisor UI is an optional dependency of txtx-cli, so we need to disable default features
 
 [build]
 rustflags = ["--cfg", "tokio_unstable"]
