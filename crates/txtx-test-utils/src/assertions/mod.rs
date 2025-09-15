@@ -71,6 +71,35 @@ macro_rules! assert_parse_error {
     };
 }
 
+/// Assert that validation warning contains pattern
+#[macro_export]
+macro_rules! assert_validation_warning {
+    ($result:expr, $pattern:expr) => {
+        let pattern = $pattern;
+        let found = $result
+            .warnings
+            .iter()
+            .any(|w| w.message.contains(pattern));
+        if !found {
+            let warnings_str = $result
+                .warnings
+                .iter()
+                .map(|w| format!("  - {}", w.message))
+                .collect::<Vec<_>>()
+                .join("\n");
+            panic!(
+                "Expected warning containing '{}', but got:\n{}",
+                pattern,
+                if warnings_str.is_empty() {
+                    "  (no warnings)".to_string()
+                } else {
+                    warnings_str
+                }
+            );
+        }
+    };
+}
+
 /// Assert that execution succeeded
 #[macro_export]
 macro_rules! assert_success {
@@ -111,6 +140,7 @@ mod tests {
         let result = ValidationResult {
             success: false,
             errors: vec![Diagnostic::error_from_string("undefined variable: foo".to_string())],
+            warnings: vec![],
         };
         
         assert_validation_error!(result, "undefined variable");

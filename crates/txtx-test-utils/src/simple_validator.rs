@@ -41,5 +41,6 @@ pub fn validate_content(content: &str) -> ValidationResult {
     ValidationResult {
         success: errors.is_empty(),
         errors,
+        warnings: vec![],
     }
 }
