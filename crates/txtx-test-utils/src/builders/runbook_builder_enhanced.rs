@@ -118,12 +118,34 @@ impl RunbookBuilder {
                 // Use existing simple validation
                 crate::simple_validator::validate_content(&content)
             }
-            ValidationMode::Doctor { manifest, environment, file_path } => {
-                // This will only work if RunbookBuilderExt is implemented
-                // Otherwise it will fail to compile, which is intentional
-                panic!("Doctor validation requires implementing RunbookBuilderExt trait in your test crate");
+            ValidationMode::Doctor { manifest, environment, file_path: _ } => {
+                // Use the processor-based validation
+                use txtx_core::processing::{
+                    validators::DoctorValidator,
+                    RunbookProcessor,
+                    ProcessingContext,
+                    ValidationContext,
+                };
+                
+                // Create processing context
+                let mut processing_context = ProcessingContext::new(std::env::current_dir().unwrap());
+                if let Some(m) = manifest {
+                    processing_context = processing_context.with_manifest(m);
+                }
+                if let Some(env) = environment {
+                    processing_context = processing_context.with_environment(env);
+                }
+                processing_context = processing_context.with_cli_inputs(self.cli_inputs.clone());
+                
+                // Create validation context
+                let validation_context = ValidationContext::new(processing_context);
+                
+                // Parse the runbook content to get a Runbook struct
+                // For now, we'll return a placeholder since we need to parse the content
+                // In a real implementation, we'd parse the content into a Runbook struct
+                panic!("Doctor validation requires parsing runbook content into Runbook struct");
             }
-            ValidationMode::Lsp { workspace_root, manifest } => {
+            ValidationMode::Lsp { workspace_root: _, manifest: _ } => {
                 // TODO: Implement LSP validation mode
                 unimplemented!("LSP validation mode not yet implemented")
             }

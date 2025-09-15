@@ -16,6 +16,7 @@ pub mod std;
 pub mod templates;
 pub mod types;
 pub mod validation;
+pub mod processing;
 
 #[cfg(test)]
 mod tests;
