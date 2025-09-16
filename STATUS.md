@@ -1,6 +1,6 @@
 # txtx Project Status
 
-**Last Updated**: 2025-01-15
+**Last Updated**: 2025-01-16
 
 ## Executive Summary
 
@@ -9,9 +9,9 @@ The txtx project has successfully completed two major architectural improvements
 2. **ADR-002**: Integrated HCL parser diagnostics directly into LSP validation
 
 Current focus areas:
-- Implementing missing validation features (undefined references, circular dependencies)
-- Fixing test infrastructure circular dependencies
-- Cleaning up technical debt from architectural changes
+- Refactoring validation pipeline to move logic from CLI to core
+- Breaking circular dependency between CLI and test utilities
+- Enabling currently ignored tests through architectural improvements
 
 ## Recent Architectural Decisions
 
@@ -92,6 +92,7 @@ Current focus areas:
 
 ### Core Components
 - `/crates/txtx-core/src/` - Core parsing and execution
+  - `/crates/txtx-core/src/validation/manifest_validator.rs` - Manifest validation with extensible rules
 - `/crates/txtx-addon-kit/` - Addon framework
 - `/crates/txtx-test-utils/` - Testing utilities
 
@@ -142,7 +143,8 @@ Current focus areas:
 
 ### Short Term (Next Sprint)
 3. **Refactor Validation Pipeline**
-   - Extract manifest validation from doctor command to core
+   - ✅ Extract manifest validation from doctor command to core (completed 2025-01-16)
+   - ⏳ Update doctor analyzer to use core validation
    - Create `ValidationContext` to share state between validators
    - Implement proper error aggregation and deduplication
    - Design validation plugin architecture for addons
@@ -194,8 +196,21 @@ Current focus areas:
    - No integration tests for multi-file scenarios
    - Limited testing of error recovery paths
 
-## Recent Changes (2025-01-15)
+## Recent Changes
 
+### 2025-01-16
+- **Extracted manifest validation to core module** ✅
+  - Created extensible `manifest_validator` module in txtx-core
+  - Implemented `ManifestValidationConfig` for customizable validation
+  - Added built-in validation rules (undefined input, deprecated input, required input)
+  - First step in breaking circular dependency between CLI and test utilities
+- Fixed compilation errors in test infrastructure
+  - Removed experimental LSP validation code causing module resolution errors
+  - Cleaned up duplicate method definitions
+  - Fixed unused imports and warnings
+- Updated test coverage status (75 total tests passing)
+
+### 2025-01-15
 - Eliminated txtx-lsp-server crate (ADR-001)
 - **Implemented HCL validation integration (ADR-002)** ✅
   - Created `hcl_diagnostics.rs` for extracting diagnostics from HCL parser
@@ -205,13 +220,6 @@ Current focus areas:
 - Discovered undefined reference detection was already implemented
 - Enhanced test infrastructure with validation modes
 - Fixed compilation warnings and added appropriate `#[allow(dead_code)]` annotations
-- **Implemented basic LSP validation mode for tests** ✅
-  - Created `test_validation.rs` module for LSP test support
-  - Added `LspValidationExt` trait for tests to use LSP validation
-  - Enabled 2 previously ignored LSP tests (multi-file and workspace manifest)
-- **Implemented cross-file validation support** ✅
-  - Created `diagnostics_hcl_integrated_v2.rs` with multi-file support
-  - Created `diagnostics_multi_file_hcl.rs` for HCL validation of multi-file runbooks
   - Updated handlers to use V2 validation with automatic multi-file detection
 ## Quick Reference
 
