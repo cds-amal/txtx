@@ -4,6 +4,7 @@ use lsp_types::{Diagnostic, DiagnosticSeverity, Range, Position};
 use txtx_core::validation::hcl_diagnostics::{HclDiagnostic, DiagnosticSeverity as HclSeverity};
 
 /// Convert an HCL diagnostic to LSP diagnostic format
+#[allow(dead_code)]
 pub fn hcl_to_lsp_diagnostic(
     hcl_diag: &HclDiagnostic,
     source: &str,
@@ -51,6 +52,7 @@ pub fn hcl_to_lsp_diagnostic(
 }
 
 /// Convert a byte span to LSP range
+#[allow(dead_code)]
 fn span_to_range(source: &str, start: usize, end: usize) -> Range {
     let start_pos = offset_to_position(source, start);
     let end_pos = offset_to_position(source, end);
@@ -68,6 +70,7 @@ fn span_to_range(source: &str, start: usize, end: usize) -> Range {
 }
 
 /// Convert byte offset to line/column position
+#[allow(dead_code)]
 fn offset_to_position(source: &str, offset: usize) -> (usize, usize) {
     let mut line = 0;
     let mut column = 0;
