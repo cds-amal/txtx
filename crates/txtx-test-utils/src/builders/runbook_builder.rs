@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use txtx_addon_kit::types::diagnostics::Diagnostic;
 use txtx_addon_kit::serde_json;
+use txtx_core::manifest::WorkspaceManifest;
 
 /// Validation result for a runbook
 #[derive(Debug)]
@@ -99,6 +100,10 @@ pub struct RunbookBuilder {
     building_content: Vec<String>,
     /// Current action being built
     current_action: Option<String>,
+    /// Optional manifest for validation
+    manifest: Option<WorkspaceManifest>,
+    /// Current environment for validation
+    current_environment: Option<String>,
 }
 
 /// Configuration for a mock blockchain
@@ -119,6 +124,8 @@ impl RunbookBuilder {
             cli_inputs: HashMap::new(),
             building_content: Vec::new(),
             current_action: None,
+            manifest: None,
+            current_environment: None,
         }
     }
     
@@ -271,6 +278,41 @@ signer "{}" "{}" {{
     }
     
     /// Parse the runbook without validation
+    /// Set the workspace manifest for validation
+    pub fn with_manifest(mut self, manifest: WorkspaceManifest) -> Self {
+        self.manifest = Some(manifest);
+        self
+    }
+    
+    /// Set the current environment for validation
+    pub fn set_current_environment(mut self, env: &str) -> Self {
+        self.current_environment = Some(env.to_string());
+        self
+    }
+    
+    /// Validate with manifest checking enabled
+    /// 
+    /// This method enables manifest validation even without specifying an environment.
+    /// Use this when you want to validate that all env.* references have corresponding
+    /// environment variables defined in the manifest.
+    pub fn validate_with_manifest(&mut self) -> ValidationResult {
+        let content = self.build_content();
+        let cli_inputs_vec: Vec<(String, String)> = self.cli_inputs.iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        
+        let manifest = self.manifest.clone().unwrap_or_else(|| {
+            crate::builders::create_test_manifest_from_envs(&self.environments)
+        });
+        
+        crate::simple_validator::validate_content_with_manifest(
+            &content,
+            Some(manifest),
+            self.current_environment.clone(),
+            cli_inputs_vec,
+        )
+    }
+    
     pub fn parse(&self) -> ParseResult {
         // TODO: Implement actual parsing
         // For now, return a placeholder
@@ -283,8 +325,30 @@ signer "{}" "{}" {{
     /// Validate the runbook without execution
     pub fn validate(&mut self) -> ValidationResult {
         let content = self.build_content();
-        // Use the simple validator
-        crate::simple_validator::validate_content(&content)
+        
+        // Convert CLI inputs to vector format
+        let cli_inputs_vec: Vec<(String, String)> = self.cli_inputs.iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        
+        // Use manifest-aware validation only if we have a manifest or current environment is set
+        // This preserves backward compatibility for tests that set environments but don't specify which one to use
+        if self.manifest.is_some() || self.current_environment.is_some() {
+            // Create a manifest if we don't have one but have environments
+            let manifest = self.manifest.clone().unwrap_or_else(|| {
+                crate::builders::create_test_manifest_from_envs(&self.environments)
+            });
+            
+            crate::simple_validator::validate_content_with_manifest(
+                &content,
+                Some(manifest),
+                self.current_environment.clone(),
+                cli_inputs_vec,
+            )
+        } else {
+            // Fall back to simple validation for backward compatibility
+            crate::simple_validator::validate_content(&content)
+        }
     }
     
     /// Execute the runbook

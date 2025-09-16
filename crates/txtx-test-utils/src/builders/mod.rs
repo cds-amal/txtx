@@ -5,4 +5,4 @@ mod runbook_builder_enhanced;
 pub mod parser;
 
 pub use runbook_builder::{RunbookBuilder, ParseResult, ValidationResult, ExecutionResult, MockConfig};
-pub use runbook_builder_enhanced::{RunbookBuilderExt, ValidationMode, create_test_manifest_with_env};
+pub use runbook_builder_enhanced::{RunbookBuilderExt, ValidationMode, create_test_manifest_with_env, create_test_manifest_from_envs};

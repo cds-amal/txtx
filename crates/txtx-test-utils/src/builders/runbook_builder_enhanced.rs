@@ -2,6 +2,7 @@ use crate::builders::runbook_builder::{RunbookBuilder, ValidationResult};
 use txtx_core::manifest::WorkspaceManifest;
 use txtx_addon_kit::indexmap::IndexMap;
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 /// Enhanced validation options for RunbookBuilder
 pub enum ValidationMode {
@@ -244,6 +245,27 @@ pub fn create_test_manifest_with_env(environments: Vec<(&str, Vec<(&str, &str)>)
             env_map.insert(key.to_string(), value.to_string());
         }
         manifest.environments.insert(env_name.to_string(), env_map);
+    }
+    
+    manifest
+}
+
+/// Create a test manifest from a HashMap of environments
+pub fn create_test_manifest_from_envs(environments: &HashMap<String, HashMap<String, String>>) -> WorkspaceManifest {
+    let mut manifest = WorkspaceManifest {
+        name: "test".to_string(),
+        id: "test-id".to_string(),
+        runbooks: Vec::new(),
+        environments: IndexMap::new(),
+        location: None,
+    };
+    
+    for (env_name, vars) in environments {
+        let mut env_map = IndexMap::new();
+        for (key, value) in vars {
+            env_map.insert(key.clone(), value.clone());
+        }
+        manifest.environments.insert(env_name.clone(), env_map);
     }
     
     manifest
