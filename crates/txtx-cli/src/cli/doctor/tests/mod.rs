@@ -202,19 +202,19 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "TODO: RunbookBuilder needs to support manifest-based validation for input/env checking"]
     fn test_missing_input_in_environment() {
-        // Original test validates that input.MISSING_VAR has a corresponding env var
-        // This requires RunbookAnalyzer::validate_inputs_against_manifest_with_locations
-        let result = RunbookBuilder::new()
+        // This test validates that undefined input references are caught
+        let mut result = RunbookBuilder::new()
             .with_content(r#"
                 output "test" {
                     value = input.MISSING_VAR
                 }
             "#)
             .with_environment("prod", vec![("OTHER_VAR", "value")])
+            .set_current_environment("prod")  // Enable manifest validation
             .validate();
 
+        // HCL validation should catch undefined input reference
         assert_validation_error!(result, "MISSING_VAR");
     }
 

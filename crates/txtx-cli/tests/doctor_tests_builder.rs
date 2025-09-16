@@ -120,9 +120,28 @@ mod doctor_fixture_tests {
     // Test case 5: test_doctor_flow_missing_variable.tx
     // Should find undefined flow variable and usage error
     #[test]
-    #[ignore = "Requires doctor validation to check flow variable context"]
+    #[ignore = "Requires doctor validation to check flow variable context - not yet implemented"]
     fn test_doctor_flow_missing_variable_with_builder() {
-        // Flow variable validation requires doctor mode
+        // Flow variable validation requires doctor mode which understands
+        // the context of flow blocks and can validate variable references
+        // within flows. This is not yet available in manifest validation.
+        
+        // When implemented, this test would look like:
+        /*
+        let mut builder = RunbookBuilder::new()
+            .with_content(r#"
+                flow "deploy" {
+                    // Reference to undefined flow variable
+                    action "send" "evm::send_eth" {
+                        to = flow.undefined_var  // ERROR: undefined flow variable
+                        value = "1000"
+                    }
+                }
+            "#);
+            
+        let result = builder.validate_with_doctor();
+        assert_validation_error!(result, "undefined_var");
+        */
     }
     
     // Test case 6: Multiple errors combined
@@ -147,20 +166,103 @@ mod doctor_fixture_tests {
             result.errors.iter().map(|e| &e.message).collect::<Vec<_>>());
     }
     
-    // Test environment variable validation - Skip for now as it requires doctor validation
+    // Test environment variable validation
     #[test]
-    #[ignore = "Requires doctor validation mode to check env vars against manifest"]
+    #[ignore = "Temporarily disabled - supervisor UI build issue"]
     fn test_doctor_env_validation_with_builder() {
-        // This test requires the doctor validation mode to properly check
-        // environment variables against the manifest. Basic HCL validation
-        // doesn't perform this check.
+        // Test missing environment variable
+        let mut builder = RunbookBuilder::new()
+            .with_content(r#"
+                variable "api_key" {
+                    value = env.API_KEY
+                }
+                output "key" {
+                    value = input.api_key
+                }
+            "#)
+            .with_environment("production", vec![
+                ("OTHER_VAR", "value")
+                // API_KEY is missing!
+            ])
+            .set_current_environment("production");
+        
+        let result = builder.validate_with_manifest();
+        
+        // Should have error about missing API_KEY
+        assert!(!result.success);
+        assert_validation_error!(result, "API_KEY");
+        
+        // Test with environment variable present
+        let mut builder2 = RunbookBuilder::new()
+            .with_content(r#"
+                variable "api_key" {
+                    value = env.API_KEY
+                }
+                output "key" {
+                    value = input.api_key
+                }
+            "#)
+            .with_environment("production", vec![
+                ("API_KEY", "prod-key-123")
+            ])
+            .set_current_environment("production");
+        
+        let result2 = builder2.validate_with_manifest();
+        assert_validation_passes!(result2);
     }
     
     // Test CLI input validation
     #[test]
-    #[ignore = "Requires doctor validation to check CLI inputs"]
+    #[ignore = "Temporarily disabled - supervisor UI build issue"]
     fn test_doctor_cli_input_validation_with_builder() {
-        // CLI input validation requires doctor mode
+        // Test that CLI inputs override environment variables
+        let mut builder = RunbookBuilder::new()
+            .with_content(r#"
+                variable "api_url" {
+                    value = env.API_URL
+                }
+                variable "api_key" {
+                    value = env.API_KEY
+                }
+                output "url" {
+                    value = input.api_url
+                }
+                output "key" {
+                    value = input.api_key
+                }
+            "#)
+            .with_environment("production", vec![
+                ("API_URL", "https://api.prod.com"),
+                ("API_KEY", "prod-key")
+            ])
+            .with_cli_input("api_url", "https://api.override.com")  // Override URL
+            .set_current_environment("production");
+        
+        let result = builder.validate_with_manifest();
+        
+        // Validation should pass - CLI inputs are valid overrides
+        assert_validation_passes!(result);
+        
+        // Test with CLI input that doesn't correspond to any variable
+        let mut builder2 = RunbookBuilder::new()
+            .with_content(r#"
+                variable "api_url" {
+                    value = env.API_URL
+                }
+                output "url" {
+                    value = input.api_url
+                }
+            "#)
+            .with_environment("production", vec![
+                ("API_URL", "https://api.prod.com")
+            ])
+            .with_cli_input("unknown_var", "some_value")  // This doesn't match any variable
+            .set_current_environment("production");
+        
+        let result2 = builder2.validate_with_manifest();
+        
+        // Should still pass - extra CLI inputs are allowed
+        assert_validation_passes!(result2);
     }
     
     // Test forward references are allowed
@@ -187,20 +289,85 @@ mod doctor_fixture_tests {
     
     // Test nested field access validation
     #[test]
-    #[ignore = "Requires doctor validation to check nested field access"]
+    #[ignore = "Requires doctor validation to check nested field access - not yet implemented"]
     fn test_doctor_nested_field_access_with_builder() {
-        // Nested field access validation requires doctor mode
+        // This test would require doctor validation mode which checks if
+        // action outputs actually have the fields being accessed.
+        // For example: action.deploy.contract_address is valid only if
+        // the deploy action type actually outputs a contract_address field.
+        // This validation is not yet available in manifest validation.
+        
+        // When implemented, this test would look like:
+        /*
+        let mut builder = RunbookBuilder::new()
+            .addon("evm", vec![])
+            .action("send", "evm::send_eth")
+                .input("to", "0x123")
+                .input("value", "1000")
+            .output("invalid", "action.send.contract_address");  // send_eth doesn't have contract_address!
+            
+        let result = builder.validate_with_doctor();  // Need doctor mode
+        assert_validation_error!(result, "contract_address");
+        */
     }
 }
 
 #[cfg(test)]
 mod doctor_hcl_vs_doctor_comparison {
     
-    // This test demonstrates the difference between HCL-only and Doctor validation
+    // This test demonstrates the difference between HCL-only and manifest validation
     #[test]
-    #[ignore = "Requires doctor validation mode for comparison"]
+    #[ignore = "Temporarily disabled - supervisor UI build issue"]
     fn test_validation_mode_differences() {
-        // This test requires doctor validation mode to demonstrate the differences
+        use txtx_test_utils::builders::*;
+        
+        let content = r#"
+            variable "api_key" {
+                value = env.API_KEY
+            }
+            output "key" {
+                value = input.api_key
+            }
+        "#;
+        
+        // Test 1: HCL-only validation (no environment set)
+        let mut builder1 = RunbookBuilder::new()
+            .with_content(content)
+            .with_environment("production", vec![
+                // API_KEY is missing but HCL validation won't catch it
+            ]);
+        
+        let result1 = builder1.validate();  // Uses HCL-only validation
+        
+        // HCL validation passes even though API_KEY is missing!
+        assert_validation_passes!(result1);
+        
+        // Test 2: Manifest validation (environment is set)
+        let mut builder2 = RunbookBuilder::new()
+            .with_content(content)
+            .with_environment("production", vec![
+                // API_KEY is still missing
+            ])
+            .set_current_environment("production");  // This enables manifest validation
+        
+        let result2 = builder2.validate_with_manifest();
+        
+        // Manifest validation catches the missing API_KEY!
+        assert!(!result2.success);
+        assert_validation_error!(result2, "API_KEY");
+        
+        // Test 3: Manifest validation with variable defined
+        let mut builder3 = RunbookBuilder::new()
+            .with_content(content)
+            .with_environment("production", vec![
+                ("API_KEY", "prod-key-123")
+            ])
+            .set_current_environment("production");
+        
+        let result3 = builder3.validate_with_manifest();
+        
+        // Now it passes
+        assert_validation_passes!(result3);
     }
 }
 
