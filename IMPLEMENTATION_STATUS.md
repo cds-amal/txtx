@@ -1,6 +1,6 @@
 # QA Infrastructure Implementation Status
 
-## Current State (Updated: 2025-01-16)
+## Current State (Updated: 2025-09-16)
 
 ### Phase 1: Foundation ✅ COMPLETE
 
@@ -24,6 +24,7 @@
 - ✅ **Migrated doctor rules to core** - Available for both CLI and test utils
 - ✅ **Updated RunbookBuilder** - Now supports both HCL-only and manifest validation
 - ✅ **Created comprehensive documentation** - Architecture diagrams and guides
+- ✅ **Completed environment reference validation** - env.VAR references are now fully validated
 
 **Key Design Decisions:**
 1. **ValidationContext Pattern**: Consolidates all validation parameters, reducing complexity
@@ -107,15 +108,18 @@ txtx-cli (Doctor analyzer)
 
 ### Current Limitations
 
-1. **Variable Resolution Validation** (1 test ignored)
-   - The current validation system checks if variables are syntactically valid
-   - It does NOT check if variables with `env.` references can actually be resolved
-   - Variables can be satisfied by either `--input` CLI args or environment variables
-   - This is a reasonable design choice that provides flexibility
-   - Test affected:
-     - `test_variable_resolution_fails_when_unresolved` - demonstrates the limitation
+1. ~~**Variable Resolution Validation**~~ ✅ FIXED (2025-09-16)
+   - Previously the system didn't validate env references in variables
+   - Now fully implemented - HCL validator tracks env.VAR references
+   - All variable resolution tests passing
+   - Validates resolution through CLI inputs, specific env, or global env
 
-2. **Fix context.rs imports** (minor issue)
+2. **Remaining ignored tests** (1 test for unrelated feature)
+   - ~~`test_doctor_flow_missing_variable_with_builder`~~ ✅ FIXED - flow validation was happening in wrong phase
+   - `test_doctor_nested_field_access_with_builder` - nested field validation
+   - This test feature not yet implemented (not related to env validation)
+
+3. **Fix context.rs imports** (minor issue)
    - CommandSpecification import needs correction
    - Already using correct path elsewhere in codebase
 
@@ -133,9 +137,10 @@ txtx-cli (Doctor analyzer)
 3. Making doctor rules available to both CLI and test infrastructure
 
 **Result**: 
-- All 75 tests passing (1 ignored to demonstrate limitation)
+- All 90+ tests passing (only 2 ignored for unrelated features)
 - Clean separation of concerns
 - Extensible validation architecture
 - Comprehensive test coverage for variable resolution
+- **Full environment reference validation implemented**
 
 The RunbookBuilder now provides a clean API for test writing with proper validation modes, making it clear when manifest validation is active versus HCL-only validation. This prevents the false confidence that comes from partial validation scenarios.

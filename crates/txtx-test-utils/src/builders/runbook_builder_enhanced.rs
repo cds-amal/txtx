@@ -119,79 +119,84 @@ impl RunbookBuilder {
                 // Use existing simple validation
                 crate::simple_validator::validate_content(&content)
             }
-            ValidationMode::Doctor { manifest: _, environment: _, file_path: _ } => {
-                // Use our local parser for doctor validation
-                use super::parser::{parse_runbook_content, extract_signers, extract_actions, find_signer_references, find_action_references, find_env_references};
+            ValidationMode::Doctor { manifest, environment, file_path } => {
+                // Use the same HCL validator as the actual doctor command
+                use txtx_core::validation::{
+                    ValidationResult as CoreResult, 
+                    hcl_validator,
+                    manifest_validator::validate_inputs_against_manifest
+                };
+                use crate::addon_registry::{get_all_addons, extract_addon_specifications};
+                use txtx_addon_kit::types::diagnostics::Diagnostic;
+                use std::path::PathBuf;
                 
-                match parse_runbook_content(&content) {
-                    Ok(blocks) => {
-                        let mut result = ValidationResult {
-                            success: true,
-                            errors: vec![],
-                            warnings: vec![],
-                        };
-                        
-                        // Extract defined entities
-                        let defined_signers = extract_signers(&blocks);
-                        let defined_actions = extract_actions(&blocks);
-                        
-                        // Find references
-                        let signer_refs = find_signer_references(&content);
-                        let action_refs = find_action_references(&content);
-                        
-                        // Check for undefined signers
-                        for signer_ref in &signer_refs {
-                            if !defined_signers.contains(signer_ref) {
-                                result.success = false;
-                                result.errors.push(txtx_addon_kit::types::diagnostics::Diagnostic::error_from_string(
-                                    format!("undefined signer 'signer.{}'", signer_ref)
-                                ));
-                            }
+                // Create core validation result
+                let mut core_result = CoreResult {
+                    errors: Vec::new(),
+                    warnings: Vec::new(),
+                    suggestions: Vec::new(),
+                };
+                
+                // Get addon specifications
+                let addons = get_all_addons();
+                let addon_specs = extract_addon_specifications(&addons);
+                
+                // Determine file path
+                let file_path_str = file_path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "test.tx".to_string());
+                
+                // Run HCL validation with addon specifications
+                match hcl_validator::validate_with_hcl_and_addons(
+                    &content,
+                    &mut core_result,
+                    &file_path_str,
+                    addon_specs,
+                ) {
+                    Ok(input_refs) => {
+                        // If we have manifest context, validate inputs
+                        if let (Some(manifest), Some(env_name)) = (&manifest, &environment) {
+                            // Convert CLI inputs from builder
+                            let cli_inputs: Vec<(String, String)> = vec![];
+                            
+                            validate_inputs_against_manifest(
+                                &input_refs,
+                                &content,
+                                manifest,
+                                Some(env_name),
+                                &mut core_result,
+                                &file_path_str,
+                                &cli_inputs,
+                                txtx_core::validation::manifest_validator::ManifestValidationConfig::default(),
+                            );
                         }
-                        
-                        // Check for undefined actions
-                        for action_ref in &action_refs {
-                            if !defined_actions.contains(action_ref) {
-                                result.success = false;
-                                result.errors.push(txtx_addon_kit::types::diagnostics::Diagnostic::error_from_string(
-                                    format!("undefined action 'action.{}'", action_ref)
-                                ));
-                            }
-                        }
-                        
-                        // Check for undefined environment variables
-                        let env_refs = find_env_references(&content);
-                        
-                        // Get available environment variables
-                        let available_env_vars = if let ValidationMode::Doctor { manifest: Some(manifest), environment: Some(env_name), .. } = &mode {
-                            manifest.environments.get(env_name)
-                                .map(|env| env.keys().cloned().collect::<Vec<_>>())
-                                .unwrap_or_default()
-                        } else {
-                            // Check the builder's own environments
-                            self.environments.values()
-                                .flat_map(|env| env.keys().cloned())
-                                .collect::<Vec<_>>()
-                        };
-                        
-                        for env_ref in &env_refs {
-                            if !available_env_vars.contains(env_ref) {
-                                result.success = false;
-                                result.errors.push(txtx_addon_kit::types::diagnostics::Diagnostic::error_from_string(
-                                    format!("undefined environment variable 'env.{}'", env_ref)
-                                ));
-                            }
-                        }
-                        
-                        result
                     }
                     Err(e) => {
-                        ValidationResult {
-                            success: false,
-                            errors: vec![e],
-                            warnings: vec![],
-                        }
+                        core_result.errors.push(txtx_core::validation::ValidationError {
+                            message: format!("Failed to parse runbook: {}", e),
+                            file: file_path_str.clone(),
+                            line: None,
+                            column: None,
+                            context: None,
+                            documentation_link: None,
+                        });
                     }
+                }
+                
+                // Convert core result to our result type
+                let errors: Vec<Diagnostic> = core_result.errors.into_iter()
+                    .map(|e| Diagnostic::error_from_string(e.message))
+                    .collect();
+                
+                let warnings: Vec<Diagnostic> = core_result.warnings.into_iter()
+                    .map(|w| Diagnostic::warning_from_string(w.message))
+                    .collect();
+                
+                ValidationResult {
+                    success: errors.is_empty(),
+                    errors,
+                    warnings,
                 }
             }
             ValidationMode::Lsp { workspace_root: _, manifest: _ } => {

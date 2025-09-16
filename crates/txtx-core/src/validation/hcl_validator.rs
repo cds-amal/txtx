@@ -326,9 +326,10 @@ impl<'a> HclValidationVisitor<'a> {
     
     /// Validate a traversal expression
     fn validate_traversal(&mut self, traversal: &Traversal) {
-        if !self.is_validation_phase {
-            return;
-        }
+        // Note: We process traversals in BOTH phases:
+        // - Collection phase: to gather input references
+        // - Validation phase: to validate references like flow.*, action.*, etc.
+
         
         // Get the root variable
         let Some(root) = traversal.expr.as_variable() else {
@@ -355,25 +356,11 @@ impl<'a> HclValidationVisitor<'a> {
             .map(|span| self.span_to_position(span))
             .unwrap_or((0, 0));
         
-        match parts[0].as_str() {
-            "input" => {
-                // Collect input reference for later validation
-                let parts_vec: Vec<String> = parts.into_iter().collect();
-                let (line, col) = self.current_block
-                    .as_ref()
-                    .and_then(|ctx| ctx.span.as_ref())
-                    .map(|span| self.span_to_position(span))
-                    .unwrap_or((0, 0));
-                
-                self.input_refs.push(LocatedInputRef {
-                    name: parts_vec.join("."),
-                    line,
-                    column: col,
-                });
-            }
-            "env" => {
-                // Collect environment variable reference for later validation
-                if parts.len() >= 2 {
+        // In collection phase, we only collect input/env references
+        if !self.is_validation_phase {
+            match parts[0].as_str() {
+                "input" => {
+                    // Collect input reference for later validation
                     let parts_vec: Vec<String> = parts.into_iter().collect();
                     let (line, col) = self.current_block
                         .as_ref()
@@ -387,7 +374,30 @@ impl<'a> HclValidationVisitor<'a> {
                         column: col,
                     });
                 }
+                "env" => {
+                    // Collect environment variable reference for later validation
+                    if parts.len() >= 2 {
+                        let parts_vec: Vec<String> = parts.into_iter().collect();
+                        let (line, col) = self.current_block
+                            .as_ref()
+                            .and_then(|ctx| ctx.span.as_ref())
+                            .map(|span| self.span_to_position(span))
+                            .unwrap_or((0, 0));
+                        
+                        self.input_refs.push(LocatedInputRef {
+                            name: parts_vec.join("."),
+                            line,
+                            column: col,
+                        });
+                    }
+                }
+                _ => {}
             }
+            return;
+        }
+        
+        // In validation phase, we validate all references
+        match parts[0].as_str() {
             "action" => {
                 if parts.len() >= 2 {
                     let action_name = &parts[1];
@@ -439,6 +449,7 @@ impl<'a> HclValidationVisitor<'a> {
             "flow" => {
                 if parts.len() >= 2 {
                     let attr_name = &parts[1];
+
                     
                     if self.flow_inputs.is_empty() {
                         // No flows defined at all

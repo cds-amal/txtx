@@ -120,28 +120,30 @@ mod doctor_fixture_tests {
     // Test case 5: test_doctor_flow_missing_variable.tx
     // Should find undefined flow variable and usage error
     #[test]
-    #[ignore = "Requires doctor validation to check flow variable context - not yet implemented"]
     fn test_doctor_flow_missing_variable_with_builder() {
-        // Flow variable validation requires doctor mode which understands
-        // the context of flow blocks and can validate variable references
-        // within flows. This is not yet available in manifest validation.
-        
-        // When implemented, this test would look like:
-        /*
+        // Doctor mode now uses the same HCL validator as production
         let mut builder = RunbookBuilder::new()
             .with_content(r#"
+                addon "evm" {}
+                
                 flow "deploy" {
-                    // Reference to undefined flow variable
-                    action "send" "evm::send_eth" {
-                        to = flow.undefined_var  // ERROR: undefined flow variable
-                        value = "1000"
-                    }
+                    some_var = "test"
+                }
+                
+                signer "test_signer" "evm::secret_key" {
+                    secret_key = "0x1234567890123456789012345678901234567890123456789012345678901234"
+                }
+                
+                action "send" "evm::send_eth" {
+                    signer = signer.test_signer
+                    to = flow.undefined_var  // ERROR: undefined flow variable
+                    value = "1000"
                 }
             "#);
             
-        let result = builder.validate_with_doctor();
+        let result = builder.validate_with_doctor(None, None);
+
         assert_validation_error!(result, "undefined_var");
-        */
     }
     
     // Test case 6: Multiple errors combined

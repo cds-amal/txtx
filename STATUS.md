@@ -1,6 +1,6 @@
 # txtx Project Status
 
-**Last Updated**: 2025-01-16
+**Last Updated**: 2025-09-16
 
 ## Executive Summary
 
@@ -104,18 +104,20 @@ Current focus areas:
 ## Testing Status
 
 ### Current Test Coverage
-- ✅ Core functionality tests passing (75 total tests)
+- ✅ Core functionality tests passing (90+ total tests)
 - ✅ LSP protocol tests passing  
-- ✅ Doctor validation tests passing (7 active tests)
+- ✅ Doctor validation tests passing (31 tests)
 - ✅ HCL diagnostics tests passing
 - ✅ LSP validation integration tests passing (6 tests)
 - ✅ Undefined reference test now passing
-- 🟡 5 doctor tests ignored due to circular dependency:
-  - `test_doctor_flow_missing_variable_with_builder`
-  - `test_doctor_env_validation_with_builder` 
-  - `test_doctor_cli_input_validation_with_builder`
-  - `test_doctor_nested_field_access_with_builder`
-  - `test_validation_mode_differences`
+- ✅ **Environment variable reference validation** (15 comprehensive tests)
+  - Validates env.VAR references in variable blocks
+  - Checks resolution through manifest environments
+  - Validates CLI input overrides
+  - Tests precedence: CLI > specific env > global env
+- 🟡 2 doctor tests ignored for features not yet implemented:
+  - `test_doctor_flow_missing_variable_with_builder` (flow variable context)
+  - `test_doctor_nested_field_access_with_builder` (nested field validation)
 
 ### Test Infrastructure
 - Using `txtx-test-utils` for integration testing
@@ -198,7 +200,19 @@ Current focus areas:
 
 ## Recent Changes
 
-### 2025-01-16
+### 2025-09-16
+- **Completed environment reference validation** ✅
+  - HCL validator now tracks `env.` references in variable blocks
+  - Fixed manifest validator to use 'global' as default environment (not 'defaults')
+  - Added comprehensive test suite with 15 truth table tests
+  - Fixed 33 tests where CLI input names didn't match env variable names
+  - All 31 doctor integration tests now passing
+  - Validation properly checks that env references can be resolved through:
+    - CLI inputs (highest precedence)
+    - Specific environment variables
+    - Global environment variables
+
+### 2025-01-16  
 - **Extracted manifest validation to core module** ✅
   - Created extensible `manifest_validator` module in txtx-core
   - Implemented `ManifestValidationConfig` for customizable validation
