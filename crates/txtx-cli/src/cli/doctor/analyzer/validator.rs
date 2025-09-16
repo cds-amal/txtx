@@ -7,10 +7,13 @@ use txtx_core::{
 use super::rules::{ValidationRule, ValidationContext, ValidationOutcome};
 
 /// Data-driven input validator
+#[allow(dead_code)]
 pub struct InputValidator {
+    #[allow(dead_code)]
     rules: Vec<Box<dyn ValidationRule>>,
 }
 
+#[allow(dead_code)]
 impl InputValidator {
     /// Create a new validator with the default rule set
     pub fn new() -> Self {
@@ -148,6 +151,7 @@ impl Default for InputValidator {
 }
 
 /// Build effective inputs by merging global, environment, and CLI inputs
+#[allow(dead_code)]
 fn build_effective_inputs(
     manifest: &WorkspaceManifest,
     environment: Option<&String>,
@@ -182,6 +186,7 @@ fn build_effective_inputs(
 }
 
 /// Strip "input." prefix from input name if present
+#[allow(dead_code)]
 fn strip_input_prefix(name: &str) -> &str {
     if name.starts_with("input.") {
         &name[6..]
@@ -191,6 +196,7 @@ fn strip_input_prefix(name: &str) -> &str {
 }
 
 /// Helper function to find the line and column of an input reference in the source
+#[allow(dead_code)]
 fn find_input_location(content: &str, input_name: &str) -> Option<(usize, usize)> {
     for (line_idx, line) in content.lines().enumerate() {
         if let Some(col_idx) = line.find(input_name) {

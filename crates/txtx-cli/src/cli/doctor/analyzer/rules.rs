@@ -5,18 +5,21 @@ use txtx_core::validation::ValidationSuggestion;
 /// Trait for validation rules
 pub trait ValidationRule: Send + Sync {
     /// Unique name for this rule
+    #[allow(dead_code)]
     fn name(&self) -> &'static str;
     
     /// Execute the validation check
     fn check(&self, context: &ValidationContext) -> ValidationOutcome;
     
     /// Optional description of what this rule validates
+    #[allow(dead_code)]
     fn description(&self) -> &'static str {
         "No description provided"
     }
 }
 
 /// Context passed to validation rules
+#[allow(dead_code)]
 pub struct ValidationContext<'a> {
     pub input_name: &'a str,
     pub full_name: &'a str,  // e.g., "input.my_var"
@@ -247,6 +250,7 @@ pub fn get_default_rules() -> Vec<Box<dyn ValidationRule>> {
 }
 
 /// Get strict validation rules for production environments
+#[allow(dead_code)]
 pub fn get_strict_rules() -> Vec<Box<dyn ValidationRule>> {
     let mut rules = get_default_rules();
     
@@ -258,6 +262,7 @@ pub fn get_strict_rules() -> Vec<Box<dyn ValidationRule>> {
 }
 
 /// Rule: No default/example values in production
+#[allow(dead_code)]
 struct NoDefaultValuesRule;
 
 impl ValidationRule for NoDefaultValuesRule {
@@ -302,6 +307,7 @@ impl ValidationRule for NoDefaultValuesRule {
 }
 
 /// Rule: Ensure critical inputs are present in production
+#[allow(dead_code)]
 struct RequiredProductionInputsRule;
 
 impl ValidationRule for RequiredProductionInputsRule {

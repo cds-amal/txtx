@@ -493,15 +493,7 @@ mod doctor_multi_file_tests {
     }
 }
 
-// Helper function to create a standard test manifest
-fn create_standard_test_manifest() -> WorkspaceManifest {
-    create_test_manifest_with_env(vec![
-        ("test", vec![
-            ("ETH_RPC_URL", "http://localhost:8545"),
-            ("DEPLOYER_KEY", "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"),
-        ]),
-    ])
-}
+
 
 #[cfg(test)]
 mod variable_resolution_truth_table {

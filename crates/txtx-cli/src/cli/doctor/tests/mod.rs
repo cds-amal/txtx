@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_missing_input_in_environment() {
         // This test validates that undefined input references are caught
-        let mut result = RunbookBuilder::new()
+        let result = RunbookBuilder::new()
             .with_content(r#"
                 output "test" {
                     value = input.MISSING_VAR

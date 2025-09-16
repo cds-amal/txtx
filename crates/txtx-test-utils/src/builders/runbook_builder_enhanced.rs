@@ -128,7 +128,6 @@ impl RunbookBuilder {
                 };
                 use crate::addon_registry::{get_all_addons, extract_addon_specifications};
                 use txtx_addon_kit::types::diagnostics::Diagnostic;
-                use std::path::PathBuf;
                 
                 // Create core validation result
                 let mut core_result = CoreResult {
