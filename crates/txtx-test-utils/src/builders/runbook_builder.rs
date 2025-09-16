@@ -292,9 +292,14 @@ signer "{}" "{}" {{
     
     /// Validate with manifest checking enabled
     /// 
-    /// This method enables manifest validation even without specifying an environment.
-    /// Use this when you want to validate that all env.* references have corresponding
-    /// environment variables defined in the manifest.
+    /// This method enables manifest validation with a specific environment.
+    /// Without specifying an environment, validation can only check against "defaults",
+    /// which may not include all variables needed for actual environments.
+    /// 
+    /// For proper validation, always use set_current_environment() first:
+    /// ```
+    /// builder.set_current_environment("production").validate_with_manifest()
+    /// ```
     pub fn validate_with_manifest(&mut self) -> ValidationResult {
         let content = self.build_content();
         let cli_inputs_vec: Vec<(String, String)> = self.cli_inputs.iter()
@@ -331,9 +336,9 @@ signer "{}" "{}" {{
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         
-        // Use manifest-aware validation only if we have a manifest or current environment is set
-        // This preserves backward compatibility for tests that set environments but don't specify which one to use
-        if self.manifest.is_some() || self.current_environment.is_some() {
+        // Only use manifest-aware validation if we have both a manifest/environments AND a current environment
+        // Without specifying an environment, we can only validate against "defaults" which is incomplete
+        if (self.manifest.is_some() || !self.environments.is_empty()) && self.current_environment.is_some() {
             // Create a manifest if we don't have one but have environments
             let manifest = self.manifest.clone().unwrap_or_else(|| {
                 crate::builders::create_test_manifest_from_envs(&self.environments)
@@ -346,7 +351,10 @@ signer "{}" "{}" {{
                 cli_inputs_vec,
             )
         } else {
-            // Fall back to simple validation for backward compatibility
+            // Fall back to simple HCL validation
+            // This is appropriate when:
+            // - No manifest/environments are provided (pure syntax validation)
+            // - Environments are provided but no current environment is set (can't validate properly)
             crate::simple_validator::validate_content(&content)
         }
     }
