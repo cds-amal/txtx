@@ -266,12 +266,13 @@ mod tests {
 
     fn create_test_context<'a>(
         input_name: &'a str,
+        full_name: &'a str,
         manifest: &'a WorkspaceManifest,
         effective_inputs: &'a HashMap<String, String>,
     ) -> ManifestValidationContext<'a> {
         ManifestValidationContext {
             input_name,
-            full_name: &format!("env.{}", input_name),
+            full_name,
             manifest,
             environment: Some("production"),
             effective_inputs,
@@ -295,7 +296,7 @@ mod tests {
         let rule = InputNamingConventionRule;
         
         // Test hyphenated name
-        let ctx = create_test_context("api-key", &manifest, &inputs);
+        let ctx = create_test_context("api-key", "env.api-key", &manifest, &inputs);
         match rule.check(&ctx) {
             ValidationOutcome::Warning { message, .. } => {
                 assert!(message.contains("hyphens"));
@@ -304,7 +305,7 @@ mod tests {
         }
         
         // Test uppercase name
-        let ctx = create_test_context("ApiKey", &manifest, &inputs);
+        let ctx = create_test_context("ApiKey", "env.ApiKey", &manifest, &inputs);
         match rule.check(&ctx) {
             ValidationOutcome::Warning { message, .. } => {
                 assert!(message.contains("uppercase"));
@@ -313,7 +314,7 @@ mod tests {
         }
         
         // Test valid name
-        let ctx = create_test_context("api_key", &manifest, &inputs);
+        let ctx = create_test_context("api_key", "env.api_key", &manifest, &inputs);
         match rule.check(&ctx) {
             ValidationOutcome::Pass => {}
             _ => panic!("Expected pass for valid name"),
@@ -334,7 +335,7 @@ mod tests {
         inputs.insert("api_key".to_string(), "hardcoded123".to_string());
         
         let rule = SensitiveDataRule;
-        let ctx = create_test_context("api_key", &manifest, &inputs);
+        let ctx = create_test_context("api_key", "env.api_key", &manifest, &inputs);
         
         match rule.check(&ctx) {
             ValidationOutcome::Warning { message, .. } => {

@@ -4,6 +4,7 @@
 //! the doctor command (CLI) and the LSP for real-time error detection.
 
 pub mod addon_specifications;
+pub mod context;
 pub mod doctor_rules;
 pub mod hcl_validator;
 pub mod hcl_diagnostics;
@@ -19,6 +20,7 @@ pub use manifest_validator::{
     validate_inputs_against_manifest, ManifestValidationConfig, ManifestValidationRule,
     ManifestValidationContext, ValidationOutcome,
 };
+pub use context::{ValidationContext, ValidationContextBuilder, ValidationContextExt};
 pub use doctor_rules::{
     get_doctor_rules, get_strict_doctor_rules,
     InputNamingConventionRule, CliInputOverrideRule, SensitiveDataRule,
