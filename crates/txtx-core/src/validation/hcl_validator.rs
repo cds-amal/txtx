@@ -371,6 +371,23 @@ impl<'a> HclValidationVisitor<'a> {
                     column: col,
                 });
             }
+            "env" => {
+                // Collect environment variable reference for later validation
+                if parts.len() >= 2 {
+                    let parts_vec: Vec<String> = parts.into_iter().collect();
+                    let (line, col) = self.current_block
+                        .as_ref()
+                        .and_then(|ctx| ctx.span.as_ref())
+                        .map(|span| self.span_to_position(span))
+                        .unwrap_or((0, 0));
+                    
+                    self.input_refs.push(LocatedInputRef {
+                        name: parts_vec.join("."),
+                        line,
+                        column: col,
+                    });
+                }
+            }
             "action" => {
                 if parts.len() >= 2 {
                     let action_name = &parts[1];

@@ -173,9 +173,9 @@ fn build_effective_inputs(
 ) -> HashMap<String, String> {
     let mut inputs = HashMap::new();
     
-    // First, add defaults from manifest
-    if let Some(defaults) = manifest.environments.get("defaults") {
-        inputs.extend(defaults.iter().map(|(k, v)| (k.clone(), v.clone())));
+    // First, add global environment (txtx's default environment)
+    if let Some(global) = manifest.environments.get("global") {
+        inputs.extend(global.iter().map(|(k, v)| (k.clone(), v.clone())));
     }
     
     // Then, overlay the specific environment if provided
