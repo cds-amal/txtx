@@ -101,11 +101,11 @@ Current focus areas:
 - ✅ Doctor validation tests passing
 - ✅ HCL diagnostics tests passing (4 tests)
 - ✅ LSP validation integration tests passing (4 tests)
-- 🟡 4 LSP tests ignored pending implementation:
-  - `test_lsp_undefined_reference_diagnostics`
-  - `test_lsp_circular_dependency_diagnostics`
-  - `test_lsp_multi_file_imports_with_builder`
-  - `test_lsp_workspace_manifest_validation`
+- ✅ Undefined reference test now passing
+- 🟡 3 LSP tests ignored pending implementation:
+  - `test_lsp_circular_dependency_diagnostics` (circular dependency detection not implemented)
+  - `test_lsp_multi_file_imports_with_builder` (LSP validation mode in test utils not implemented)
+  - `test_lsp_workspace_manifest_validation` (LSP validation mode in test utils not implemented)
 
 ### Test Infrastructure
 - Using `txtx-test-utils` for integration testing
@@ -119,10 +119,10 @@ Current focus areas:
 
 ### Immediate (This Week)
 1. **Implement Missing Validation Features**
-   - Add undefined reference detection in core validation
+   - ✅ Undefined reference detection is already implemented and working
    - Implement circular dependency detection
    - Enable cross-file reference validation
-   - Update ignored tests once features are implemented
+   - Update remaining ignored tests once features are implemented
 
 2. **Clean Up Technical Debt**
    - Remove `tower_lsp_server.rs` file (no longer used)
@@ -168,7 +168,7 @@ Current focus areas:
    - Blocks comprehensive integration testing
 
 2. **Incomplete Validation Coverage**
-   - Undefined reference detection not implemented
+   - ✅ Undefined reference detection (implemented and working)
    - Circular dependency detection not implemented
    - Cross-file validation not working
 
@@ -178,7 +178,7 @@ Current focus areas:
    - HCL diagnostic position extraction could be improved
 
 4. **Test Gaps**
-   - 4 LSP tests currently ignored due to missing features
+   - 3 LSP tests currently ignored (down from 4 - undefined reference test now passing)
    - No integration tests for multi-file scenarios
    - Limited testing of error recovery paths
 
