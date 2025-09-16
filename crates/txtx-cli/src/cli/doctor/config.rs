@@ -19,14 +19,9 @@ impl DoctorConfig {
         cli_inputs: Vec<(String, String)>,
         format: crate::cli::DoctorOutputFormat,
     ) -> Self {
-        let manifest_path = PathBuf::from(manifest_path.unwrap_or_else(|| "./txtx.yml".to_string()));
-        Self {
-            manifest_path,
-            runbook_name,
-            environment,
-            cli_inputs,
-            format,
-        }
+        let manifest_path =
+            PathBuf::from(manifest_path.unwrap_or_else(|| "./txtx.yml".to_string()));
+        Self { manifest_path, runbook_name, environment, cli_inputs, format }
     }
 
     /// Resolve auto format to concrete format

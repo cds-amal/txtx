@@ -1,9 +1,11 @@
 //! Doctor-specific validation rules
-//! 
+//!
 //! These rules provide additional validation beyond the basic manifest validation,
 //! including naming conventions, security checks, and production requirements.
 
-use super::manifest_validator::{ManifestValidationRule, ManifestValidationContext, ValidationOutcome};
+use super::manifest_validator::{
+    ManifestValidationContext, ManifestValidationRule, ValidationOutcome,
+};
 
 /// Rule: Check input naming conventions
 pub struct InputNamingConventionRule;
@@ -12,7 +14,7 @@ impl ManifestValidationRule for InputNamingConventionRule {
     fn name(&self) -> &'static str {
         "input_naming_convention"
     }
-    
+
     fn description(&self) -> &'static str {
         "Validates that inputs follow naming conventions"
     }
@@ -25,10 +27,7 @@ impl ManifestValidationRule for InputNamingConventionRule {
                     "Input '{}' contains hyphens. Consider using underscores for consistency",
                     ctx.full_name
                 ),
-                suggestion: Some(format!(
-                    "Rename to '{}'",
-                    ctx.full_name.replace('-', "_")
-                )),
+                suggestion: Some(format!("Rename to '{}'", ctx.full_name.replace('-', "_"))),
             };
         }
 
@@ -56,16 +55,14 @@ impl ManifestValidationRule for CliInputOverrideRule {
     fn name(&self) -> &'static str {
         "cli_input_override"
     }
-    
+
     fn description(&self) -> &'static str {
         "Warns when CLI inputs override environment values"
     }
 
     fn check(&self, ctx: &ManifestValidationContext) -> ValidationOutcome {
         // Check if this input is being overridden by CLI
-        let cli_override = ctx.cli_inputs
-            .iter()
-            .find(|(k, _)| k == ctx.input_name);
+        let cli_override = ctx.cli_inputs.iter().find(|(k, _)| k == ctx.input_name);
 
         if let Some((_, cli_value)) = cli_override {
             if let Some(env_value) = ctx.effective_inputs.get(ctx.input_name) {
@@ -95,19 +92,28 @@ impl ManifestValidationRule for SensitiveDataRule {
     fn name(&self) -> &'static str {
         "sensitive_data"
     }
-    
+
     fn description(&self) -> &'static str {
         "Detects potential sensitive data in inputs"
     }
 
     fn check(&self, ctx: &ManifestValidationContext) -> ValidationOutcome {
         let sensitive_patterns = [
-            "password", "passwd", "secret", "token", "key", "credential",
-            "private", "auth", "apikey", "api_key", "access_key"
+            "password",
+            "passwd",
+            "secret",
+            "token",
+            "key",
+            "credential",
+            "private",
+            "auth",
+            "apikey",
+            "api_key",
+            "access_key",
         ];
 
         let lower_name = ctx.input_name.to_lowercase();
-        
+
         for pattern in &sensitive_patterns {
             if lower_name.contains(pattern) {
                 if let Some(value) = ctx.effective_inputs.get(ctx.input_name) {
@@ -123,7 +129,7 @@ impl ManifestValidationRule for SensitiveDataRule {
                             ),
                         };
                     }
-                    
+
                     // Check if it's hardcoded (not a reference)
                     if !value.starts_with("${") && !value.starts_with("env.") {
                         return ValidationOutcome::Warning {
@@ -132,7 +138,8 @@ impl ManifestValidationRule for SensitiveDataRule {
                                 ctx.full_name
                             ),
                             suggestion: Some(
-                                "Consider using environment variables or secure secret management".to_string()
+                                "Consider using environment variables or secure secret management"
+                                    .to_string(),
                             ),
                         };
                     }
@@ -152,7 +159,7 @@ impl ManifestValidationRule for NoDefaultValuesRule {
     fn name(&self) -> &'static str {
         "no_default_values"
     }
-    
+
     fn description(&self) -> &'static str {
         "Ensures production environments don't use default values"
     }
@@ -174,7 +181,7 @@ impl ManifestValidationRule for NoDefaultValuesRule {
                                 ctx.full_name
                             ),
                             suggestion: Some(
-                                "Define an explicit value for production environment".to_string()
+                                "Define an explicit value for production environment".to_string(),
                             ),
                         };
                     }
@@ -193,7 +200,7 @@ impl ManifestValidationRule for RequiredProductionInputsRule {
     fn name(&self) -> &'static str {
         "required_production_inputs"
     }
-    
+
     fn description(&self) -> &'static str {
         "Ensures required inputs are present in production"
     }
@@ -206,9 +213,14 @@ impl ManifestValidationRule for RequiredProductionInputsRule {
 
         // List of patterns that indicate required production inputs
         let required_patterns = [
-            "api_url", "api_endpoint", "base_url",
-            "api_token", "api_key", "auth_token",
-            "chain_id", "network_id",
+            "api_url",
+            "api_endpoint",
+            "base_url",
+            "api_token",
+            "api_key",
+            "auth_token",
+            "chain_id",
+            "network_id",
         ];
 
         // Check if this input matches a required pattern
@@ -261,8 +273,8 @@ pub fn get_strict_doctor_rules() -> Vec<Box<dyn ManifestValidationRule>> {
 mod tests {
     use super::*;
     use crate::manifest::WorkspaceManifest;
-    use txtx_addon_kit::indexmap::IndexMap;
     use std::collections::HashMap;
+    use txtx_addon_kit::indexmap::IndexMap;
 
     fn create_test_context<'a>(
         input_name: &'a str,
@@ -291,10 +303,10 @@ mod tests {
             environments: IndexMap::new(),
             location: None,
         };
-        
+
         let inputs = HashMap::new();
         let rule = InputNamingConventionRule;
-        
+
         // Test hyphenated name
         let ctx = create_test_context("api-key", "env.api-key", &manifest, &inputs);
         match rule.check(&ctx) {
@@ -303,7 +315,7 @@ mod tests {
             }
             _ => panic!("Expected warning for hyphenated name"),
         }
-        
+
         // Test uppercase name
         let ctx = create_test_context("ApiKey", "env.ApiKey", &manifest, &inputs);
         match rule.check(&ctx) {
@@ -312,7 +324,7 @@ mod tests {
             }
             _ => panic!("Expected warning for uppercase name"),
         }
-        
+
         // Test valid name
         let ctx = create_test_context("api_key", "env.api_key", &manifest, &inputs);
         match rule.check(&ctx) {
@@ -330,13 +342,13 @@ mod tests {
             environments: IndexMap::new(),
             location: None,
         };
-        
+
         let mut inputs = HashMap::new();
         inputs.insert("api_key".to_string(), "hardcoded123".to_string());
-        
+
         let rule = SensitiveDataRule;
         let ctx = create_test_context("api_key", "env.api_key", &manifest, &inputs);
-        
+
         match rule.check(&ctx) {
             ValidationOutcome::Warning { message, .. } => {
                 assert!(message.contains("hardcoded sensitive data"));

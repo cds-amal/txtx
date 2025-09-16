@@ -1,13 +1,13 @@
 //! Adapter to integrate doctor validation into LSP diagnostics
 
-use std::collections::HashMap;
-use lsp_types::{Diagnostic, Range, Position, Url};
-use crate::cli::doctor::{
-    ValidationRule, ValidationContext,
-    InputDefinedRule, InputNamingConventionRule, CliInputOverrideRule, SensitiveDataRule,
-};
-use txtx_core::manifest::WorkspaceManifest;
 use super::converter::validation_outcome_to_diagnostic;
+use crate::cli::doctor::{
+    CliInputOverrideRule, InputDefinedRule, InputNamingConventionRule, SensitiveDataRule,
+    ValidationContext, ValidationRule,
+};
+use lsp_types::{Diagnostic, Position, Range, Url};
+use std::collections::HashMap;
+use txtx_core::manifest::WorkspaceManifest;
 
 /// Adapter that runs doctor validation rules and produces LSP diagnostics
 pub struct DoctorValidationAdapter {
@@ -43,7 +43,7 @@ impl DoctorValidationAdapter {
 
         // Extract file path from URI
         let file_path = uri.path();
-        
+
         // For now, we'll create a simple validation context
         // In a real implementation, this would parse the document to find inputs
         let context = ValidationContext {
@@ -60,14 +60,17 @@ impl DoctorValidationAdapter {
         // Run each validation rule
         for rule in &self.rules {
             let outcome = rule.check(&context);
-            
+
             // For now, use a default range (whole first line)
             // In a real implementation, we'd parse locations from the content
             let range = Range {
                 start: Position { line: 0, character: 0 },
-                end: Position { line: 0, character: content.lines().next().map(|l| l.len()).unwrap_or(0) as u32 },
+                end: Position {
+                    line: 0,
+                    character: content.lines().next().map(|l| l.len()).unwrap_or(0) as u32,
+                },
             };
-            
+
             if let Some(diagnostic) = validation_outcome_to_diagnostic(outcome, range) {
                 diagnostics.push(diagnostic);
             }
@@ -108,7 +111,7 @@ mod tests {
         let adapter = DoctorValidationAdapter::new();
         let uri = Url::parse("file:///test.tx").unwrap();
         let content = "test content";
-        
+
         let diagnostics = adapter.validate_document(&uri, content, None);
         assert!(diagnostics.is_empty()); // No diagnostics without manifest
     }

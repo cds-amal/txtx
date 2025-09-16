@@ -1,22 +1,22 @@
 //! LSP request handlers
-//! 
+//!
 //! This module provides a trait-based system for handling LSP requests,
 //! allowing each operation to be implemented in isolation.
 
-use lsp_types::*;
 use super::workspace::SharedWorkspaceState;
+use lsp_types::*;
 
 mod completion;
 mod definition;
 mod diagnostics;
-mod hover;
 mod document_sync;
+mod hover;
 
 pub use completion::CompletionHandler;
 pub use definition::DefinitionHandler;
 pub use diagnostics::DiagnosticsHandler;
-pub use hover::HoverHandler;
 pub use document_sync::DocumentSyncHandler;
+pub use hover::HoverHandler;
 
 /// Base trait for all LSP handlers
 pub trait Handler: Send + Sync {
@@ -27,15 +27,13 @@ pub trait Handler: Send + Sync {
 /// Trait for handlers that process text document requests
 pub trait TextDocumentHandler: Handler {
     /// Get the URI and content for a text document position
-    fn get_document_at_position(&self, params: &TextDocumentPositionParams) 
-        -> Option<(lsp_types::Url, String, Position)> {
+    fn get_document_at_position(
+        &self,
+        params: &TextDocumentPositionParams,
+    ) -> Option<(lsp_types::Url, String, Position)> {
         let workspace = self.workspace().read();
         let document = workspace.get_document(&params.text_document.uri)?;
-        Some((
-            params.text_document.uri.clone(),
-            document.content().to_string(),
-            params.position,
-        ))
+        Some((params.text_document.uri.clone(), document.content().to_string(), params.position))
     }
 }
 

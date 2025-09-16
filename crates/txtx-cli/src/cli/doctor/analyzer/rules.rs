@@ -7,10 +7,10 @@ pub trait ValidationRule: Send + Sync {
     /// Unique name for this rule
     #[allow(dead_code)]
     fn name(&self) -> &'static str;
-    
+
     /// Execute the validation check
     fn check(&self, context: &ValidationContext) -> ValidationOutcome;
-    
+
     /// Optional description of what this rule validates
     #[allow(dead_code)]
     fn description(&self) -> &'static str {
@@ -22,7 +22,7 @@ pub trait ValidationRule: Send + Sync {
 #[allow(dead_code)]
 pub struct ValidationContext<'a> {
     pub input_name: &'a str,
-    pub full_name: &'a str,  // e.g., "input.my_var"
+    pub full_name: &'a str, // e.g., "input.my_var"
     pub manifest: &'a WorkspaceManifest,
     pub environment: Option<&'a str>,
     pub effective_inputs: &'a HashMap<String, String>,
@@ -53,7 +53,7 @@ impl ValidationRule for InputDefinedRule {
     fn name(&self) -> &'static str {
         "input_defined"
     }
-    
+
     fn description(&self) -> &'static str {
         "Validates that all input references are defined in the manifest"
     }
@@ -64,7 +64,7 @@ impl ValidationRule for InputDefinedRule {
         } else {
             let env_name = ctx.environment.unwrap_or("default");
             let mut context_msg = format!("Add '{}' to your txtx.yml file", ctx.input_name);
-            
+
             if ctx.environment.is_some() && ctx.environment != Some("global") {
                 context_msg.push_str(" (consider adding to 'global' if used across environments)");
             }
@@ -89,7 +89,7 @@ impl ValidationRule for InputDefinedRule {
                     )),
                 }),
                 documentation_link: Some(
-                    "https://docs.txtx.sh/concepts/manifest#environments".to_string()
+                    "https://docs.txtx.sh/concepts/manifest#environments".to_string(),
                 ),
             }
         }
@@ -103,7 +103,7 @@ impl ValidationRule for InputNamingConventionRule {
     fn name(&self) -> &'static str {
         "input_naming_convention"
     }
-    
+
     fn description(&self) -> &'static str {
         "Validates input names follow recommended conventions"
     }
@@ -134,10 +134,7 @@ impl ValidationRule for InputNamingConventionRule {
             }
         } else if !ctx.input_name.chars().next().map(|c| c.is_lowercase()).unwrap_or(false) {
             ValidationOutcome::Warning {
-                message: format!(
-                    "Input '{}' should start with a lowercase letter",
-                    ctx.input_name
-                ),
+                message: format!("Input '{}' should start with a lowercase letter", ctx.input_name),
                 suggestion: Some(ValidationSuggestion {
                     message: "Use lowercase for input names".to_string(),
                     example: Some(format!("Rename to: {}", ctx.input_name.to_lowercase())),
@@ -156,7 +153,7 @@ impl ValidationRule for CliInputOverrideRule {
     fn name(&self) -> &'static str {
         "cli_input_override"
     }
-    
+
     fn description(&self) -> &'static str {
         "Checks if inputs are overridden by CLI arguments"
     }
@@ -166,17 +163,19 @@ impl ValidationRule for CliInputOverrideRule {
         if !ctx.effective_inputs.contains_key(ctx.input_name) {
             return ValidationOutcome::Pass;
         }
-        
+
         // Check if this input is overridden by CLI
         let is_overridden = ctx.cli_inputs.iter().any(|(k, _)| k == ctx.input_name);
-        
+
         if is_overridden {
             // Check if there's a manifest value being overridden
-            let has_manifest_value = ctx.manifest.environments
+            let has_manifest_value = ctx
+                .manifest
+                .environments
                 .get(ctx.environment.unwrap_or("global"))
                 .and_then(|env| env.get(ctx.input_name))
                 .is_some();
-            
+
             if has_manifest_value {
                 ValidationOutcome::Warning {
                     message: format!(
@@ -204,21 +203,27 @@ impl ValidationRule for SensitiveDataRule {
     fn name(&self) -> &'static str {
         "no_sensitive_data"
     }
-    
+
     fn description(&self) -> &'static str {
         "Warns about potentially sensitive data in input names"
     }
 
     fn check(&self, ctx: &ValidationContext) -> ValidationOutcome {
         let sensitive_patterns = [
-            "password", "passwd", "pwd",
-            "secret", "key", "token",
-            "credential", "cred",
-            "private", "priv"
+            "password",
+            "passwd",
+            "pwd",
+            "secret",
+            "key",
+            "token",
+            "credential",
+            "cred",
+            "private",
+            "priv",
         ];
-        
+
         let lower_name = ctx.input_name.to_lowercase();
-        
+
         if sensitive_patterns.iter().any(|pattern| lower_name.contains(pattern)) {
             ValidationOutcome::Warning {
                 message: format!(
@@ -226,7 +231,8 @@ impl ValidationRule for SensitiveDataRule {
                     ctx.input_name
                 ),
                 suggestion: Some(ValidationSuggestion {
-                    message: "Consider using environment variables or a secure secret manager".to_string(),
+                    message: "Consider using environment variables or a secure secret manager"
+                        .to_string(),
                     example: Some(format!(
                         "# Set via environment variable:\nexport {}=\"${{VAULT_SECRET}}\"",
                         ctx.input_name.to_uppercase()
@@ -253,11 +259,11 @@ pub fn get_default_rules() -> Vec<Box<dyn ValidationRule>> {
 #[allow(dead_code)]
 pub fn get_strict_rules() -> Vec<Box<dyn ValidationRule>> {
     let mut rules = get_default_rules();
-    
+
     // Add production-specific rules
     rules.push(Box::new(NoDefaultValuesRule));
     rules.push(Box::new(RequiredProductionInputsRule));
-    
+
     rules
 }
 
@@ -269,7 +275,7 @@ impl ValidationRule for NoDefaultValuesRule {
     fn name(&self) -> &'static str {
         "no_default_values"
     }
-    
+
     fn description(&self) -> &'static str {
         "Ensures no default or example values are used in production"
     }
@@ -277,14 +283,14 @@ impl ValidationRule for NoDefaultValuesRule {
     fn check(&self, ctx: &ValidationContext) -> ValidationOutcome {
         if let Some(value) = ctx.effective_inputs.get(ctx.input_name) {
             let lower_value = value.to_lowercase();
-            
-            if lower_value.contains("default") 
+
+            if lower_value.contains("default")
                 || lower_value.contains("example")
                 || lower_value.contains("test")
                 || lower_value.contains("demo")
                 || value == "changeme"
-                || value == "replaceme" {
-                    
+                || value == "replaceme"
+            {
                 ValidationOutcome::Error {
                     message: format!(
                         "Input '{}' appears to have a placeholder value: '{}'",
@@ -314,7 +320,7 @@ impl ValidationRule for RequiredProductionInputsRule {
     fn name(&self) -> &'static str {
         "required_production_inputs"
     }
-    
+
     fn description(&self) -> &'static str {
         "Ensures critical inputs are defined for production"
     }
@@ -324,24 +330,27 @@ impl ValidationRule for RequiredProductionInputsRule {
         if ctx.environment != Some("production") && ctx.environment != Some("prod") {
             return ValidationOutcome::Pass;
         }
-        
+
         // Common required inputs for production
         let required_inputs = [
-            "api_key", "api_secret", "api_token",
-            "database_url", "db_url", "db_connection",
-            "rpc_url", "rpc_endpoint",
-            "private_key", "signing_key",
+            "api_key",
+            "api_secret",
+            "api_token",
+            "database_url",
+            "db_url",
+            "db_connection",
+            "rpc_url",
+            "rpc_endpoint",
+            "private_key",
+            "signing_key",
         ];
-        
+
         // Check if this is one of the required inputs and it's missing
-        if required_inputs.iter().any(|&req| ctx.input_name == req) 
-            && !ctx.effective_inputs.contains_key(ctx.input_name) {
-                
+        if required_inputs.iter().any(|&req| ctx.input_name == req)
+            && !ctx.effective_inputs.contains_key(ctx.input_name)
+        {
             ValidationOutcome::Error {
-                message: format!(
-                    "Required production input '{}' is not defined",
-                    ctx.input_name
-                ),
+                message: format!("Required production input '{}' is not defined", ctx.input_name),
                 context: Some("This input is critical for production deployments".to_string()),
                 suggestion: Some(ValidationSuggestion {
                     message: "Add this input to your production environment".to_string(),
@@ -362,8 +371,8 @@ impl ValidationRule for RequiredProductionInputsRule {
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use txtx_core::manifest::WorkspaceManifest;
     use txtx_addon_kit::indexmap::IndexMap;
+    use txtx_core::manifest::WorkspaceManifest;
 
     fn create_test_context<'a>(
         input_name: &'a str,
@@ -391,9 +400,10 @@ mod tests {
         let mut inputs = HashMap::new();
         inputs.insert("my_var".to_string(), "value".to_string());
         let manifest = WorkspaceManifest::new("test".to_string());
-        
-        let ctx = create_test_context("my_var", "input.my_var", &inputs, &[], Some("test"), &manifest);
-        
+
+        let ctx =
+            create_test_context("my_var", "input.my_var", &inputs, &[], Some("test"), &manifest);
+
         match rule.check(&ctx) {
             ValidationOutcome::Pass => {}
             _ => panic!("Expected Pass"),
@@ -405,9 +415,16 @@ mod tests {
         let rule = InputDefinedRule;
         let inputs = HashMap::new();
         let manifest = WorkspaceManifest::new("test".to_string());
-        
-        let ctx = create_test_context("missing_var", "input.missing_var", &inputs, &[], Some("test"), &manifest);
-        
+
+        let ctx = create_test_context(
+            "missing_var",
+            "input.missing_var",
+            &inputs,
+            &[],
+            Some("test"),
+            &manifest,
+        );
+
         match rule.check(&ctx) {
             ValidationOutcome::Error { message, .. } => {
                 assert!(message.contains("not defined"));
@@ -421,9 +438,16 @@ mod tests {
         let rule = InputNamingConventionRule;
         let inputs = HashMap::new();
         let manifest = WorkspaceManifest::new("test".to_string());
-        
-        let ctx = create_test_context("_private_var", "input._private_var", &inputs, &[], Some("test"), &manifest);
-        
+
+        let ctx = create_test_context(
+            "_private_var",
+            "input._private_var",
+            &inputs,
+            &[],
+            Some("test"),
+            &manifest,
+        );
+
         match rule.check(&ctx) {
             ValidationOutcome::Warning { message, .. } => {
                 assert!(message.contains("underscore"));
@@ -437,12 +461,12 @@ mod tests {
         let rule = CliInputOverrideRule;
         let mut inputs = HashMap::new();
         inputs.insert("api_key".to_string(), "manifest_value".to_string());
-        
+
         let mut manifest = WorkspaceManifest::new("test".to_string());
         let mut env_inputs = IndexMap::new();
         env_inputs.insert("api_key".to_string(), "manifest_value".to_string());
         manifest.environments.insert("test".to_string(), env_inputs);
-        
+
         let cli_inputs = vec![("api_key".to_string(), "cli_value".to_string())];
         let ctx = ValidationContext {
             input_name: "api_key",
@@ -454,7 +478,7 @@ mod tests {
             content: "test content",
             file_path: "test.tx",
         };
-        
+
         match rule.check(&ctx) {
             ValidationOutcome::Warning { message, .. } => {
                 assert!(message.contains("overridden by CLI"));
@@ -468,13 +492,20 @@ mod tests {
         let rule = SensitiveDataRule;
         let inputs = HashMap::new();
         let manifest = WorkspaceManifest::new("test".to_string());
-        
+
         let test_cases = vec!["password", "api_key", "secret_token", "private_key"];
-        
+
         for sensitive_name in test_cases {
             let full_name = format!("input.{}", sensitive_name);
-            let ctx = create_test_context(sensitive_name, &full_name, &inputs, &[], Some("test"), &manifest);
-            
+            let ctx = create_test_context(
+                sensitive_name,
+                &full_name,
+                &inputs,
+                &[],
+                Some("test"),
+                &manifest,
+            );
+
             match rule.check(&ctx) {
                 ValidationOutcome::Warning { message, .. } => {
                     assert!(message.contains("sensitive"));

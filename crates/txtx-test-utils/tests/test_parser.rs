@@ -1,4 +1,7 @@
-use txtx_test_utils::builders::parser::{parse_runbook_content, extract_signers, find_signer_references, find_action_references, find_env_references};
+use txtx_test_utils::builders::parser::{
+    extract_signers, find_action_references, find_env_references, find_signer_references,
+    parse_runbook_content,
+};
 
 #[test]
 fn test_parse_runbook_blocks() {
@@ -23,16 +26,16 @@ output "contract_address" {
 
     let blocks = parse_runbook_content(content).unwrap();
     assert_eq!(blocks.len(), 4);
-    
+
     assert_eq!(blocks[0].block_type, "addon");
     assert_eq!(blocks[0].labels, vec!["evm", "ethereum"]);
-    
+
     assert_eq!(blocks[1].block_type, "signer");
     assert_eq!(blocks[1].labels, vec!["deployer", "evm::web_wallet"]);
-    
+
     assert_eq!(blocks[2].block_type, "action");
     assert_eq!(blocks[2].labels, vec!["deploy", "evm::deploy_contract"]);
-    
+
     assert_eq!(blocks[3].block_type, "output");
     assert_eq!(blocks[3].labels, vec!["contract_address"]);
 }
@@ -47,7 +50,7 @@ action "test" "evm::send_eth" {}
 
     let blocks = parse_runbook_content(content).unwrap();
     let signers = extract_signers(&blocks);
-    
+
     assert_eq!(signers.len(), 2);
     assert!(signers.contains(&"alice".to_string()));
     assert!(signers.contains(&"bob".to_string()));
@@ -104,15 +107,13 @@ action "send" "evm::send_eth" {
     let blocks = parse_runbook_content(content).unwrap();
     let defined_signers = extract_signers(&blocks);
     let signer_refs = find_signer_references(content);
-    
+
     assert_eq!(defined_signers, vec!["alice"]);
     assert!(signer_refs.contains(&"bob".to_string()));
-    
+
     // Find undefined signers
-    let undefined: Vec<_> = signer_refs.iter()
-        .filter(|r| !defined_signers.contains(r))
-        .collect();
-    
+    let undefined: Vec<_> = signer_refs.iter().filter(|r| !defined_signers.contains(r)).collect();
+
     assert_eq!(undefined.len(), 1);
     assert_eq!(undefined[0], "bob");
 }

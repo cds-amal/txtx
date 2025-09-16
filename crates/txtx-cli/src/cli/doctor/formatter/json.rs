@@ -1,5 +1,5 @@
-use txtx_core::validation::ValidationResult;
 use serde_json::json;
+use txtx_core::validation::ValidationResult;
 
 /// Display results in JSON format
 pub fn display(result: &ValidationResult) {
@@ -32,6 +32,6 @@ pub fn display(result: &ValidationResult) {
             })
         }).collect::<Vec<_>>(),
     });
-    
+
     println!("{}", serde_json::to_string_pretty(&output).unwrap_or_else(|_| "{}".to_string()));
 }

@@ -1,16 +1,16 @@
+use crate::cli::common::addon_registry;
 use std::path::Path;
 use txtx_core::{
     manifest::WorkspaceManifest,
-    validation::{ValidationResult, ValidationError, hcl_validator, LocatedInputRef},
+    validation::{hcl_validator, LocatedInputRef, ValidationError, ValidationResult},
 };
-use crate::cli::common::addon_registry;
 
 pub mod inputs;
 pub mod rules;
 pub mod validator;
 
 // Re-export types needed by LSP
-pub use rules::{ValidationRule, ValidationContext, ValidationOutcome};
+pub use rules::{ValidationContext, ValidationOutcome, ValidationRule};
 
 /// Analyzes runbook files for validation errors and warnings
 pub struct RunbookAnalyzer;
@@ -29,11 +29,8 @@ impl RunbookAnalyzer {
         environment: Option<&String>,
         cli_inputs: &[(String, String)],
     ) -> ValidationResult {
-        let mut result = ValidationResult {
-            errors: Vec::new(),
-            warnings: Vec::new(),
-            suggestions: Vec::new(),
-        };
+        let mut result =
+            ValidationResult { errors: Vec::new(), warnings: Vec::new(), suggestions: Vec::new() };
 
         // Load all addons to get their specifications
         let addons = addon_registry::get_all_addons();

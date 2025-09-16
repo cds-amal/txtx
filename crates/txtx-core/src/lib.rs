@@ -17,7 +17,6 @@ pub mod templates;
 pub mod types;
 pub mod validation;
 
-
 #[cfg(test)]
 mod tests;
 pub mod utils;

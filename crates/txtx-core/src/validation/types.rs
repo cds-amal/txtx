@@ -18,15 +18,15 @@ impl ValidationResult {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
     }
-    
+
     pub fn error_count(&self) -> usize {
         self.errors.len()
     }
-    
+
     pub fn warning_count(&self) -> usize {
         self.warnings.len()
     }

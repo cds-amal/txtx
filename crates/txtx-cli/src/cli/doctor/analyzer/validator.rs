@@ -1,10 +1,10 @@
+use super::rules::{ValidationContext, ValidationOutcome, ValidationRule};
 use std::collections::HashMap;
 use std::path::Path;
 use txtx_core::{
     manifest::WorkspaceManifest,
-    validation::{ValidationResult, ValidationError, LocatedInputRef},
+    validation::{LocatedInputRef, ValidationError, ValidationResult},
 };
-use super::rules::{ValidationRule, ValidationContext, ValidationOutcome};
 
 /// Data-driven input validator
 #[allow(dead_code)]
@@ -17,41 +17,34 @@ pub struct InputValidator {
 impl InputValidator {
     /// Create a new validator with the default rule set
     pub fn new() -> Self {
-        Self {
-            rules: super::rules::get_default_rules(),
-        }
+        Self { rules: super::rules::get_default_rules() }
     }
-    
+
     /// Create a validator with a custom set of rules
     pub fn with_rules(rules: Vec<Box<dyn ValidationRule>>) -> Self {
         Self { rules }
     }
-    
+
     /// Create a validator for strict/production environments
     pub fn strict() -> Self {
-        Self {
-            rules: super::rules::get_strict_rules(),
-        }
+        Self { rules: super::rules::get_strict_rules() }
     }
-    
+
     /// Add additional rules to the validator
     pub fn add_rule(mut self, rule: Box<dyn ValidationRule>) -> Self {
         self.rules.push(rule);
         self
     }
-    
+
     /// Add multiple additional rules
     pub fn add_rules(mut self, rules: Vec<Box<dyn ValidationRule>>) -> Self {
         self.rules.extend(rules);
         self
     }
-    
+
     /// Get information about loaded rules
     pub fn describe_rules(&self) -> Vec<(&'static str, &'static str)> {
-        self.rules
-            .iter()
-            .map(|rule| (rule.name(), rule.description()))
-            .collect()
+        self.rules.iter().map(|rule| (rule.name(), rule.description())).collect()
     }
 
     /// Main validation entry point - data-driven approach
@@ -67,7 +60,7 @@ impl InputValidator {
     ) {
         // Build effective inputs from environment hierarchy
         let effective_inputs = build_effective_inputs(manifest, environment, cli_inputs);
-        
+
         // Add CLI precedence message if applicable
         if !cli_inputs.is_empty() {
             result.suggestions.push(txtx_core::validation::ValidationSuggestion {
@@ -82,7 +75,7 @@ impl InputValidator {
         // Process each input reference through all rules
         for input_ref in input_refs {
             let input_name = strip_input_prefix(&input_ref.name);
-            
+
             // Create validation context
             let context = ValidationContext {
                 input_name,
@@ -99,8 +92,13 @@ impl InputValidator {
             for rule in &self.rules {
                 match rule.check(&context) {
                     ValidationOutcome::Pass => continue,
-                    
-                    ValidationOutcome::Error { message, context: ctx, suggestion, documentation_link } => {
+
+                    ValidationOutcome::Error {
+                        message,
+                        context: ctx,
+                        suggestion,
+                        documentation_link,
+                    } => {
                         // Find location in source
                         let (line, column) = find_input_location(content, &input_ref.name)
                             .map(|(l, c)| (Some(l), Some(c)))
@@ -119,13 +117,13 @@ impl InputValidator {
                             result.suggestions.push(suggestion);
                         }
                     }
-                    
+
                     ValidationOutcome::Warning { message, suggestion } => {
                         // Find location in source
                         let (line, column) = find_input_location(content, &input_ref.name)
                             .map(|(l, c)| (Some(l), Some(c)))
                             .unwrap_or((None, None));
-                        
+
                         result.warnings.push(txtx_core::validation::ValidationWarning {
                             message,
                             file: file_path.to_string_lossy().to_string(),
@@ -133,7 +131,7 @@ impl InputValidator {
                             column,
                             suggestion: suggestion.as_ref().map(|s| s.message.clone()),
                         });
-                        
+
                         if let Some(suggestion) = suggestion {
                             result.suggestions.push(suggestion);
                         }

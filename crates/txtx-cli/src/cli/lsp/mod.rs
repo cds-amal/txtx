@@ -1,24 +1,23 @@
-mod handlers;
-mod workspace;
-mod functions;
-mod utils;
 mod diagnostics;
 mod diagnostics_enhanced;
 mod diagnostics_multi_file;
+mod functions;
+mod handlers;
+mod utils;
+mod workspace;
 
 mod diagnostics_hcl_integrated;
 
-
-mod validation;
 mod multi_file;
+mod validation;
 
 #[cfg(test)]
 mod tests;
 
 use lsp_server::{Connection, Message, Request, Response};
 use lsp_types::{
-    InitializeParams, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
-    CompletionOptions, OneOf,
+    CompletionOptions, InitializeParams, OneOf, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind,
 };
 use std::error::Error;
 
@@ -32,7 +31,7 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     // Create the connection over stdin/stdout
     let (connection, io_threads) = Connection::stdio();
-    
+
     // Wait for the initialize request
     let init_result = connection.initialize_start();
     let (initialize_id, initialize_params) = match init_result {
@@ -42,16 +41,14 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
             return Err(Box::new(e));
         }
     };
-    
+
     let initialize_params: InitializeParams = serde_json::from_value(initialize_params)?;
-    
+
     eprintln!("Initialize params: {:?}", initialize_params.root_uri);
-    
+
     // Build server capabilities
     let server_capabilities = ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(
-            TextDocumentSyncKind::FULL
-        )),
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         definition_provider: Some(OneOf::Left(true)),
         hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
@@ -61,7 +58,7 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
 
         ..Default::default()
     };
-    
+
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
         server_info: Some(lsp_types::ServerInfo {
@@ -69,27 +66,27 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
         }),
     };
-    
+
     // Complete initialization
     connection.initialize_finish(initialize_id, serde_json::to_value(initialize_result)?)?;
-    
+
     eprintln!("LSP server initialized successfully");
-    
+
     // Create shared workspace state and handlers
     let workspace = SharedWorkspaceState::new();
     let handlers = Handlers::new(workspace);
-    
+
     // Main message loop
     for message in &connection.receiver {
         match message {
             Message::Request(req) => {
                 eprintln!("Received request: {}", req.method);
-                
+
                 // Handle shutdown request
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
-                
+
                 // Route the request to appropriate handler
                 let response = handle_request(req, &handlers);
                 if let Some(resp) = response {
@@ -106,18 +103,15 @@ pub fn run_lsp() -> Result<(), Box<dyn Error + Send + Sync>> {
             }
         }
     }
-    
+
     // Join the IO threads
     io_threads.join()?;
-    
+
     eprintln!("LSP server shutting down");
     Ok(())
 }
 
-fn handle_request(
-    req: Request,
-    handlers: &Handlers,
-) -> Option<Response> {
+fn handle_request(req: Request, handlers: &Handlers) -> Option<Response> {
     match req.method.as_str() {
         "textDocument/definition" => {
             let params: lsp_types::GotoDefinitionParams = match serde_json::from_value(req.params) {
@@ -131,7 +125,7 @@ fn handle_request(
                     ));
                 }
             };
-            
+
             let result = handlers.definition.goto_definition(params);
             Some(Response::new_ok(req.id, result))
         }
@@ -147,7 +141,7 @@ fn handle_request(
                     ));
                 }
             };
-            
+
             let result = handlers.hover.hover(params);
             Some(Response::new_ok(req.id, result))
         }
@@ -163,7 +157,7 @@ fn handle_request(
                     ));
                 }
             };
-            
+
             let result = handlers.completion.completion(params);
             Some(Response::new_ok(req.id, result))
         }
@@ -188,14 +182,10 @@ fn handle_notification(
             let params: lsp_types::DidOpenTextDocumentParams = serde_json::from_value(not.params)?;
             let uri = params.text_document.uri.clone();
             handlers.document_sync.did_open(params);
-            
+
             // Send diagnostics (always, even if empty)
             let diagnostics = handlers.diagnostics.get_diagnostics(&uri);
-            let params = lsp_types::PublishDiagnosticsParams {
-                uri,
-                diagnostics,
-                version: None,
-            };
+            let params = lsp_types::PublishDiagnosticsParams { uri, diagnostics, version: None };
             let notification = lsp_server::Notification {
                 method: "textDocument/publishDiagnostics".to_string(),
                 params: serde_json::to_value(params)?,
@@ -203,17 +193,14 @@ fn handle_notification(
             connection.sender.send(Message::Notification(notification))?;
         }
         "textDocument/didChange" => {
-            let params: lsp_types::DidChangeTextDocumentParams = serde_json::from_value(not.params)?;
+            let params: lsp_types::DidChangeTextDocumentParams =
+                serde_json::from_value(not.params)?;
             let uri = params.text_document.uri.clone();
             handlers.document_sync.did_change(params);
-            
+
             // Send diagnostics (always, even if empty)
             let diagnostics = handlers.diagnostics.get_diagnostics(&uri);
-            let params = lsp_types::PublishDiagnosticsParams {
-                uri,
-                diagnostics,
-                version: None,
-            };
+            let params = lsp_types::PublishDiagnosticsParams { uri, diagnostics, version: None };
             let notification = lsp_server::Notification {
                 method: "textDocument/publishDiagnostics".to_string(),
                 params: serde_json::to_value(params)?,

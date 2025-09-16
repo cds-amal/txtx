@@ -1,11 +1,14 @@
 //! Convert doctor validation results to LSP diagnostics
 
-use lsp_types::{Diagnostic, DiagnosticSeverity, Range, Position};
 use crate::cli::doctor::ValidationOutcome;
+use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 use txtx_core::validation::ValidationSuggestion;
 
 /// Convert a doctor ValidationOutcome to an optional LSP Diagnostic
-pub fn validation_outcome_to_diagnostic(outcome: ValidationOutcome, range: Range) -> Option<Diagnostic> {
+pub fn validation_outcome_to_diagnostic(
+    outcome: ValidationOutcome,
+    range: Range,
+) -> Option<Diagnostic> {
     match outcome {
         ValidationOutcome::Pass => None,
         ValidationOutcome::Error { message, context, suggestion, documentation_link } => {
@@ -14,12 +17,13 @@ pub fn validation_outcome_to_diagnostic(outcome: ValidationOutcome, range: Range
                 diagnostic_message.push_str(&format!("\n\nContext: {}", ctx));
             }
             if let Some(sug) = suggestion {
-                diagnostic_message.push_str(&format!("\n\nSuggestion: {}", format_suggestion(&sug)));
+                diagnostic_message
+                    .push_str(&format!("\n\nSuggestion: {}", format_suggestion(&sug)));
             }
             if let Some(link) = documentation_link {
                 diagnostic_message.push_str(&format!("\n\nSee: {}", link));
             }
-            
+
             Some(Diagnostic {
                 range,
                 severity: Some(DiagnosticSeverity::ERROR),
@@ -35,9 +39,10 @@ pub fn validation_outcome_to_diagnostic(outcome: ValidationOutcome, range: Range
         ValidationOutcome::Warning { message, suggestion } => {
             let mut diagnostic_message = message;
             if let Some(sug) = suggestion {
-                diagnostic_message.push_str(&format!("\n\nSuggestion: {}", format_suggestion(&sug)));
+                diagnostic_message
+                    .push_str(&format!("\n\nSuggestion: {}", format_suggestion(&sug)));
             }
-            
+
             Some(Diagnostic {
                 range,
                 severity: Some(DiagnosticSeverity::WARNING),
@@ -63,28 +68,27 @@ fn format_suggestion(suggestion: &ValidationSuggestion) -> String {
 }
 
 /// Convert a location string to an LSP Range
+#[allow(dead_code)]
 fn location_to_range(location: &str) -> Range {
     // Parse location format "line:col" or "line:col-endcol"
     let parts: Vec<&str> = location.split(':').collect();
-    
+
     if parts.len() >= 2 {
         let line = parts[0].parse::<u32>().unwrap_or(0);
         let col_parts: Vec<&str> = parts[1].split('-').collect();
         let start_col = col_parts[0].parse::<u32>().unwrap_or(0);
-        let end_col = col_parts.get(1)
-            .and_then(|s| s.parse::<u32>().ok())
-            .unwrap_or(start_col + 1);
-        
+        let end_col = col_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(start_col + 1);
+
         Range {
-            start: Position { line: line.saturating_sub(1), character: start_col.saturating_sub(1) },
+            start: Position {
+                line: line.saturating_sub(1),
+                character: start_col.saturating_sub(1),
+            },
             end: Position { line: line.saturating_sub(1), character: end_col.saturating_sub(1) },
         }
     } else {
         // Default to first character of first line
-        Range {
-            start: Position { line: 0, character: 0 },
-            end: Position { line: 0, character: 1 },
-        }
+        Range { start: Position { line: 0, character: 0 }, end: Position { line: 0, character: 1 } }
     }
 }
 
@@ -110,7 +114,7 @@ mod tests {
         };
 
         let diagnostic = validation_outcome_to_diagnostic(outcome, range).unwrap();
-        
+
         assert_eq!(diagnostic.severity, Some(DiagnosticSeverity::ERROR));
         assert!(diagnostic.message.contains("Missing required input"));
         assert!(diagnostic.message.contains("Context: In action 'deploy'"));
@@ -134,7 +138,7 @@ mod tests {
         };
 
         let diagnostic = validation_outcome_to_diagnostic(outcome, range).unwrap();
-        
+
         assert_eq!(diagnostic.severity, Some(DiagnosticSeverity::WARNING));
         assert!(diagnostic.message.contains("Input may be undefined"));
         assert!(diagnostic.message.contains("Consider providing a default value"));

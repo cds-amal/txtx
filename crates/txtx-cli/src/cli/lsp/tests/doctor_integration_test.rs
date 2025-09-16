@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use lsp_types::{Url, DiagnosticSeverity};
     use crate::cli::lsp::diagnostics_enhanced::validate_runbook_with_doctor_rules;
+    use lsp_types::{DiagnosticSeverity, Url};
 
     #[test]
     fn test_doctor_rules_integration() {
         let uri = Url::parse("file:///test.tx").unwrap();
-        
+
         // Test content with various issues that doctor should catch
         let content = r#"
 addon "evm" {
@@ -33,22 +33,18 @@ output "private_key" {
 "#;
 
         // Run validation without manifest (should still catch some issues)
-        let diagnostics = validate_runbook_with_doctor_rules(
-            &uri,
-            content,
-            None,
-            None,
-            &[],
-        );
+        let diagnostics = validate_runbook_with_doctor_rules(&uri, content, None, None, &[]);
 
         // Print diagnostics for debugging
         println!("Found {} diagnostics:", diagnostics.len());
         for (i, diag) in diagnostics.iter().enumerate() {
-            println!("{}. {} - {}", i + 1, 
+            println!(
+                "{}. {} - {}",
+                i + 1,
                 match diag.severity {
                     Some(DiagnosticSeverity::ERROR) => "ERROR",
                     Some(DiagnosticSeverity::WARNING) => "WARNING",
-                    _ => "INFO"
+                    _ => "INFO",
                 },
                 diag.message
             );
@@ -56,11 +52,11 @@ output "private_key" {
 
         // We should have at least one diagnostic for the unknown action
         assert!(!diagnostics.is_empty(), "Expected at least one diagnostic");
-        
+
         // Check for specific issues
-        let has_unknown_action = diagnostics.iter().any(|d| 
-            d.message.contains("unknown_action") || d.message.contains("Unknown action")
-        );
+        let has_unknown_action = diagnostics
+            .iter()
+            .any(|d| d.message.contains("unknown_action") || d.message.contains("Unknown action"));
         assert!(has_unknown_action, "Should detect unknown action type");
     }
 
@@ -68,24 +64,22 @@ output "private_key" {
     fn test_doctor_rules_with_manifest() {
         use crate::cli::lsp::workspace::{Manifest, RunbookRef};
         use std::collections::HashMap;
-        
+
         let uri = Url::parse("file:///test.tx").unwrap();
-        
+
         // Create a minimal manifest with correct structure
-        let runbooks = vec![
-            RunbookRef {
-                name: "test".to_string(),
-                location: "test.tx".to_string(),
-                absolute_uri: Some(uri.clone()),
-            }
-        ];
-        
+        let runbooks = vec![RunbookRef {
+            name: "test".to_string(),
+            location: "test.tx".to_string(),
+            absolute_uri: Some(uri.clone()),
+        }];
+
         let manifest = Manifest {
             uri: Url::parse("file:///test/txtx.yml").unwrap(),
             runbooks,
             environments: HashMap::new(),
         };
-        
+
         let content = r#"
 addon "evm" {
   chain_id = 1
@@ -101,21 +95,18 @@ action "deploy" "evm::deploy_contract" {
 "#;
 
         // Run validation with manifest
-        let diagnostics = validate_runbook_with_doctor_rules(
-            &uri,
-            content,
-            Some(&manifest),
-            None,
-            &[],
-        );
+        let diagnostics =
+            validate_runbook_with_doctor_rules(&uri, content, Some(&manifest), None, &[]);
 
         println!("\nWith manifest - Found {} diagnostics:", diagnostics.len());
         for (i, diag) in diagnostics.iter().enumerate() {
-            println!("{}. {} (line {}) - {}", i + 1, 
+            println!(
+                "{}. {} (line {}) - {}",
+                i + 1,
                 match diag.severity {
                     Some(DiagnosticSeverity::ERROR) => "ERROR",
                     Some(DiagnosticSeverity::WARNING) => "WARNING",
-                    _ => "INFO"
+                    _ => "INFO",
                 },
                 diag.range.start.line,
                 diag.message
@@ -123,10 +114,11 @@ action "deploy" "evm::deploy_contract" {
         }
 
         // We should detect undefined inputs when manifest is provided
-        let has_undefined_input = diagnostics.iter().any(|d| 
-            d.message.contains("undefined") || d.message.contains("Undefined") || 
-            d.message.contains("not defined")
-        );
+        let has_undefined_input = diagnostics.iter().any(|d| {
+            d.message.contains("undefined")
+                || d.message.contains("Undefined")
+                || d.message.contains("not defined")
+        });
         assert!(has_undefined_input, "Should detect undefined inputs with manifest context");
     }
 }

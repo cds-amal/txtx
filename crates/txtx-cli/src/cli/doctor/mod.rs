@@ -7,13 +7,13 @@ mod workspace;
 mod tests;
 
 use std::path::{Path, PathBuf};
-use txtx_core::manifest::{WorkspaceManifest, file::read_runbook_from_location};
 use txtx_addon_kit::helpers::fs::FileLocation;
+use txtx_core::manifest::{file::read_runbook_from_location, WorkspaceManifest};
 
 use self::{
     config::DoctorConfig,
     formatter::display_results,
-    workspace::{WorkspaceAnalyzer, RunbookLocation},
+    workspace::{RunbookLocation, WorkspaceAnalyzer},
 };
 
 /// Main entry point for the doctor command
@@ -85,7 +85,7 @@ fn run_all_runbooks(config: &DoctorConfig) -> Result<(), String> {
     ) {
         Ok(manifest) => {
             let runbooks = workspace.find_all_runbooks_in_manifest(&manifest);
-            
+
             if runbooks.is_empty() {
                 if config.should_print_diagnostics() {
                     println!("No runbooks found in manifest.");
@@ -117,7 +117,7 @@ fn run_all_runbooks(config: &DoctorConfig) -> Result<(), String> {
         Err(_) => {
             // No manifest, try to find runbooks in current directory
             let runbooks = WorkspaceAnalyzer::find_runbooks_in_directory()?;
-            
+
             let mut any_errors = false;
             for path in runbooks {
                 if analyze_runbook_file(&analyzer, &path, config).is_err() {
@@ -142,10 +142,10 @@ fn analyze_runbook_file(
 ) -> Result<(), String> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| format!("Failed to read file {}: {}", path.display(), e))?;
-    
+
     let result = analyzer.analyze_runbook_with_context(path, &content, None, None, &[]);
     display_results(&result, &config.format);
-    
+
     if result.errors.is_empty() {
         Ok(())
     } else {
@@ -168,14 +168,14 @@ fn analyze_runbook_with_manifest(
         &config.environment,
         Some(&location.name),
     )?;
-    
+
     // For multi-file runbooks, we need to combine all content
     if runbook_sources.tree.len() > 1 {
         // Combine content from all files and track boundaries
         let mut combined_content = String::new();
         let mut file_boundaries = Vec::new();
         let mut current_line = 1usize;
-        
+
         for (file_location, (_name, raw_content)) in &runbook_sources.tree {
             let start_line = current_line;
             let content = raw_content.to_string();
@@ -185,7 +185,7 @@ fn analyze_runbook_with_manifest(
             current_line += line_count + 1;
             file_boundaries.push((file_location.to_string(), start_line, current_line));
         }
-        
+
         // Analyze the combined content
         let combined_path = location.path.join("_combined.tx");
         let result = analyzer.analyze_runbook_with_context(
@@ -195,14 +195,14 @@ fn analyze_runbook_with_manifest(
             config.environment.as_ref(),
             &config.cli_inputs,
         );
-        
+
         // Map errors back to their original files
         let mut final_result = txtx_core::validation::ValidationResult {
             errors: Vec::new(),
             warnings: Vec::new(),
             suggestions: Vec::new(),
         };
-        
+
         for error in result.errors {
             if let Some(line) = error.line {
                 // Find which file this line belongs to
@@ -219,7 +219,7 @@ fn analyze_runbook_with_manifest(
                 final_result.errors.push(error);
             }
         }
-        
+
         // Similar mapping for warnings
         for warning in result.warnings {
             if let Some(line) = warning.line {
@@ -236,11 +236,11 @@ fn analyze_runbook_with_manifest(
                 final_result.warnings.push(warning);
             }
         }
-        
+
         final_result.suggestions = result.suggestions;
-        
+
         display_results(&final_result, &config.format);
-        
+
         if final_result.errors.is_empty() {
             Ok(())
         } else {
@@ -258,9 +258,9 @@ fn analyze_runbook_with_manifest(
             config.environment.as_ref(),
             &config.cli_inputs,
         );
-        
+
         display_results(&result, &config.format);
-        
+
         if result.errors.is_empty() {
             Ok(())
         } else {
@@ -270,5 +270,7 @@ fn analyze_runbook_with_manifest(
 }
 
 // Re-export for backward compatibility and LSP integration
+pub use analyzer::rules::{
+    CliInputOverrideRule, InputDefinedRule, InputNamingConventionRule, SensitiveDataRule,
+};
 pub use analyzer::{ValidationContext, ValidationOutcome, ValidationRule};
-pub use analyzer::rules::{CliInputOverrideRule, InputDefinedRule, InputNamingConventionRule, SensitiveDataRule};

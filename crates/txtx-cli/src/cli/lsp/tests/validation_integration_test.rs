@@ -1,14 +1,18 @@
 //! Integration tests for HCL validation in LSP
-//! 
+//!
 //! These tests verify that the HCL parser integration is working correctly
 //! without requiring the full txtx build.
 
 #[cfg(test)]
 mod tests {
     use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
-    
+
     /// Create a simple diagnostic for testing
-    fn create_test_diagnostic(message: &str, line: u32, severity: DiagnosticSeverity) -> Diagnostic {
+    fn create_test_diagnostic(
+        message: &str,
+        line: u32,
+        severity: DiagnosticSeverity,
+    ) -> Diagnostic {
         Diagnostic {
             range: Range {
                 start: Position { line, character: 0 },
@@ -24,7 +28,7 @@ mod tests {
             data: None,
         }
     }
-    
+
     #[test]
     fn test_diagnostic_creation() {
         let diag = create_test_diagnostic("Test error", 5, DiagnosticSeverity::ERROR);
@@ -32,14 +36,14 @@ mod tests {
         assert_eq!(diag.range.start.line, 5);
         assert_eq!(diag.severity, Some(DiagnosticSeverity::ERROR));
     }
-    
+
     #[test]
     fn test_position_extraction_patterns() {
         // Test patterns that would be used in HCL error parsing
         let error_msg = "Error on line 5, column 10";
         assert!(error_msg.contains("line 5"));
         assert!(error_msg.contains("column 10"));
-        
+
         let error_msg2 = "Syntax error at 3:7";
         let parts: Vec<&str> = error_msg2.split(':').collect();
         if parts.len() == 2 {
@@ -47,7 +51,7 @@ mod tests {
             assert_eq!(parts[1], "7");
         }
     }
-    
+
     #[test]
     fn test_hcl_error_patterns() {
         // Common HCL error message patterns
@@ -57,19 +61,19 @@ mod tests {
             ("invalid block definition", DiagnosticSeverity::ERROR),
             ("undefined variable", DiagnosticSeverity::ERROR),
         ];
-        
+
         for (pattern, expected_severity) in patterns {
             let diag = create_test_diagnostic(pattern, 0, expected_severity);
             assert_eq!(diag.severity, Some(expected_severity));
         }
     }
-    
+
     #[test]
     fn test_validation_result_conversion() {
         use crate::cli::lsp::validation::validation_errors_to_diagnostics;
-        use txtx_core::validation::ValidationError;
         use lsp_types::Url;
-        
+        use txtx_core::validation::ValidationError;
+
         let errors = vec![
             ValidationError {
                 message: "Test error 1".to_string(),
@@ -88,10 +92,10 @@ mod tests {
                 documentation_link: None,
             },
         ];
-        
+
         let uri = Url::parse("file:///test.tx").unwrap();
         let diagnostics = validation_errors_to_diagnostics(&errors, &uri);
-        
+
         assert_eq!(diagnostics.len(), 2);
         assert_eq!(diagnostics[0].message, "Test error 1");
         assert_eq!(diagnostics[0].range.start.line, 4); // 0-based

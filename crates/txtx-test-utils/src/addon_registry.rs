@@ -1,9 +1,9 @@
 //! Addon registry for tests
 //! Simplified version of the CLI addon registry
 
-use txtx_addon_kit::{Addon, types::commands::CommandSpecification};
-use txtx_core::std::StdAddon;
 use std::collections::HashMap;
+use txtx_addon_kit::{types::commands::CommandSpecification, Addon};
+use txtx_core::std::StdAddon;
 
 /// Get all available addons for testing
 pub fn get_all_addons() -> Vec<Box<dyn Addon>> {
@@ -18,15 +18,15 @@ pub fn get_all_addons() -> Vec<Box<dyn Addon>> {
 
 /// Extract addon specifications from addon instances
 pub fn extract_addon_specifications(
-    addons: &[Box<dyn Addon>]
+    addons: &[Box<dyn Addon>],
 ) -> HashMap<String, Vec<(String, CommandSpecification)>> {
     use txtx_addon_kit::types::commands::PreCommandSpecification;
     let mut specifications = HashMap::new();
-    
+
     for addon in addons {
         let namespace = addon.get_namespace();
         let mut actions = Vec::new();
-        
+
         for action in addon.get_actions() {
             match action {
                 PreCommandSpecification::Atomic(spec) => {
@@ -46,9 +46,9 @@ pub fn extract_addon_specifications(
                 }
             }
         }
-        
+
         specifications.insert(namespace.to_string(), actions);
     }
-    
+
     specifications
 }

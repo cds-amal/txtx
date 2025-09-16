@@ -1,23 +1,25 @@
 //! Converter between LSP Manifest and txtx-core WorkspaceManifest types
-//! 
+//!
 //! This module provides conversion utilities to bridge the simplified LSP
 //! manifest representation with the full WorkspaceManifest used by doctor.
 
 use super::manifests::Manifest as LspManifest;
-use txtx_core::manifest::{WorkspaceManifest, RunbookMetadata};
 use txtx_addon_kit::indexmap::IndexMap;
+use txtx_core::manifest::{RunbookMetadata, WorkspaceManifest};
 
 /// Convert an LSP Manifest to a WorkspaceManifest for doctor validation
 pub fn lsp_manifest_to_workspace_manifest(lsp_manifest: &LspManifest) -> WorkspaceManifest {
     // Convert runbooks
-    let runbooks = lsp_manifest.runbooks.iter().map(|runbook_ref| {
-        RunbookMetadata {
+    let runbooks = lsp_manifest
+        .runbooks
+        .iter()
+        .map(|runbook_ref| RunbookMetadata {
             name: runbook_ref.name.clone(),
             location: runbook_ref.location.clone(),
             description: None,
             state: None,
-        }
-    }).collect();
+        })
+        .collect();
 
     // Convert environments - need to convert HashMap to IndexMap
     let mut environments = IndexMap::new();
@@ -31,7 +33,7 @@ pub fn lsp_manifest_to_workspace_manifest(lsp_manifest: &LspManifest) -> Workspa
 
     WorkspaceManifest {
         name: "workspace".to_string(), // Default name since LSP doesn't track this
-        id: "workspace".to_string(),    // Default ID
+        id: "workspace".to_string(),   // Default ID
         runbooks,
         environments,
         location: None, // LSP doesn't track file location in the same way
@@ -39,8 +41,9 @@ pub fn lsp_manifest_to_workspace_manifest(lsp_manifest: &LspManifest) -> Workspa
 }
 
 /// Convert a minimal manifest for validation when only environments are needed
+#[allow(dead_code)]
 pub fn create_minimal_workspace_manifest(
-    environments: &std::collections::HashMap<String, std::collections::HashMap<String, String>>
+    environments: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) -> WorkspaceManifest {
     let mut env_map = IndexMap::new();
     for (env_name, env_vars) in environments {

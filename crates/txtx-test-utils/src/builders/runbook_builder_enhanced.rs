@@ -1,8 +1,8 @@
 use crate::builders::runbook_builder::{RunbookBuilder, ValidationResult};
-use txtx_core::manifest::WorkspaceManifest;
-use txtx_addon_kit::indexmap::IndexMap;
-use std::path::PathBuf;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use txtx_addon_kit::indexmap::IndexMap;
+use txtx_core::manifest::WorkspaceManifest;
 
 /// Enhanced validation options for RunbookBuilder
 pub enum ValidationMode {
@@ -27,16 +27,16 @@ pub enum ValidationMode {
 }
 
 /// Extension trait for RunbookBuilder to enable doctor validation
-/// 
+///
 /// This trait must be implemented by the test crate that has access to txtx-cli.
 /// This avoids a circular dependency between txtx-test-utils and txtx-cli.
-/// 
+///
 /// # Example Implementation
-/// 
+///
 /// ```rust
 /// use txtx_test_utils::{RunbookBuilder, RunbookBuilderExt, ValidationResult};
 /// use txtx_cli::cli::doctor::analyzer::RunbookAnalyzer;
-/// 
+///
 /// impl RunbookBuilderExt for RunbookBuilder {
 ///     fn validate_with_doctor_impl(
 ///         &mut self,
@@ -78,16 +78,16 @@ pub trait RunbookBuilderExt {
 
 impl RunbookBuilder {
     /// Validate with enhanced doctor analysis
-    /// 
+    ///
     /// This runs the full doctor validation pipeline including:
     /// - Undefined signer detection
     /// - Invalid field access on action outputs
     /// - Cross-reference validation between actions
     /// - Input/environment variable validation against manifest
-    /// 
+    ///
     /// Note: This method requires the RunbookBuilderExt trait to be implemented
     /// in your test crate with access to txtx-cli.
-    /// 
+    ///
     /// # Example
     /// ```rust
     /// let manifest = create_test_manifest();
@@ -95,7 +95,7 @@ impl RunbookBuilder {
     ///     .action("deploy", "evm::deploy_contract")
     ///         .input("signer", "signer.undefined")  // Doctor will catch this!
     ///     .validate_with_doctor(Some(manifest), Some("production".to_string()));
-    /// 
+    ///
     /// assert_validation_error!(result, "undefined signer");
     /// ```
     pub fn validate_with_doctor(
@@ -109,11 +109,11 @@ impl RunbookBuilder {
             file_path: Some(PathBuf::from("test.tx")),
         })
     }
-    
+
     /// Validate with specific validation mode
     pub fn validate_with_mode(&mut self, mode: ValidationMode) -> ValidationResult {
         let content = self.build_content();
-        
+
         match mode {
             ValidationMode::HclOnly => {
                 // Use existing simple validation
@@ -121,31 +121,30 @@ impl RunbookBuilder {
             }
             ValidationMode::Doctor { manifest, environment, file_path } => {
                 // Use the same HCL validator as the actual doctor command
-                use txtx_core::validation::{
-                    ValidationResult as CoreResult, 
-                    hcl_validator,
-                    manifest_validator::validate_inputs_against_manifest
-                };
-                use crate::addon_registry::{get_all_addons, extract_addon_specifications};
+                use crate::addon_registry::{extract_addon_specifications, get_all_addons};
                 use txtx_addon_kit::types::diagnostics::Diagnostic;
-                
+                use txtx_core::validation::{
+                    hcl_validator, manifest_validator::validate_inputs_against_manifest,
+                    ValidationResult as CoreResult,
+                };
+
                 // Create core validation result
                 let mut core_result = CoreResult {
                     errors: Vec::new(),
                     warnings: Vec::new(),
                     suggestions: Vec::new(),
                 };
-                
+
                 // Get addon specifications
                 let addons = get_all_addons();
                 let addon_specs = extract_addon_specifications(&addons);
-                
+
                 // Determine file path
                 let file_path_str = file_path
                     .as_ref()
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_else(|| "test.tx".to_string());
-                
+
                 // Run HCL validation with addon specifications
                 match hcl_validator::validate_with_hcl_and_addons(
                     &content,
@@ -158,7 +157,7 @@ impl RunbookBuilder {
                         if let (Some(manifest), Some(env_name)) = (&manifest, &environment) {
                             // Convert CLI inputs from builder
                             let cli_inputs: Vec<(String, String)> = vec![];
-                            
+
                             validate_inputs_against_manifest(
                                 &input_refs,
                                 &content,
@@ -182,34 +181,34 @@ impl RunbookBuilder {
                         });
                     }
                 }
-                
+
                 // Convert core result to our result type
-                let errors: Vec<Diagnostic> = core_result.errors.into_iter()
+                let errors: Vec<Diagnostic> = core_result
+                    .errors
+                    .into_iter()
                     .map(|e| Diagnostic::error_from_string(e.message))
                     .collect();
-                
-                let warnings: Vec<Diagnostic> = core_result.warnings.into_iter()
+
+                let warnings: Vec<Diagnostic> = core_result
+                    .warnings
+                    .into_iter()
                     .map(|w| Diagnostic::warning_from_string(w.message))
                     .collect();
-                
-                ValidationResult {
-                    success: errors.is_empty(),
-                    errors,
-                    warnings,
-                }
+
+                ValidationResult { success: errors.is_empty(), errors, warnings }
             }
             ValidationMode::Lsp { workspace_root: _, manifest: _ } => {
                 // LSP validation requires the RunbookBuilderExt trait to be implemented
                 // by the test crate that has access to txtx-cli
                 // For now, we provide a simple fallback that uses HCL validation
                 eprintln!("INFO: Using basic HCL validation for LSP mode. Implement RunbookBuilderExt::validate_with_lsp_impl for full LSP validation.");
-                
+
                 // Use HCL validation as a fallback
                 crate::simple_validator::validate_content(&content)
             }
         }
     }
-    
+
     /// Create a test manifest with the configured environments
     pub fn build_manifest(&self) -> WorkspaceManifest {
         let mut manifest = WorkspaceManifest {
@@ -219,22 +218,22 @@ impl RunbookBuilder {
             environments: IndexMap::new(),
             location: None,
         };
-        
+
         // Add configured environments to manifest
         for (env_name, vars) in &self.environments {
-            let env_vars: IndexMap<String, String> = vars
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect();
+            let env_vars: IndexMap<String, String> =
+                vars.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
             manifest.environments.insert(env_name.clone(), env_vars);
         }
-        
+
         manifest
     }
 }
 
 /// Helper to create a test manifest quickly
-pub fn create_test_manifest_with_env(environments: Vec<(&str, Vec<(&str, &str)>)>) -> WorkspaceManifest {
+pub fn create_test_manifest_with_env(
+    environments: Vec<(&str, Vec<(&str, &str)>)>,
+) -> WorkspaceManifest {
     let mut manifest = WorkspaceManifest {
         name: "test".to_string(),
         id: "test-id".to_string(),
@@ -242,7 +241,7 @@ pub fn create_test_manifest_with_env(environments: Vec<(&str, Vec<(&str, &str)>)
         environments: IndexMap::new(),
         location: None,
     };
-    
+
     for (env_name, vars) in environments {
         let mut env_map = IndexMap::new();
         for (key, value) in vars {
@@ -250,12 +249,14 @@ pub fn create_test_manifest_with_env(environments: Vec<(&str, Vec<(&str, &str)>)
         }
         manifest.environments.insert(env_name.to_string(), env_map);
     }
-    
+
     manifest
 }
 
 /// Create a test manifest from a HashMap of environments
-pub fn create_test_manifest_from_envs(environments: &HashMap<String, HashMap<String, String>>) -> WorkspaceManifest {
+pub fn create_test_manifest_from_envs(
+    environments: &HashMap<String, HashMap<String, String>>,
+) -> WorkspaceManifest {
     let mut manifest = WorkspaceManifest {
         name: "test".to_string(),
         id: "test-id".to_string(),
@@ -263,7 +264,7 @@ pub fn create_test_manifest_from_envs(environments: &HashMap<String, HashMap<Str
         environments: IndexMap::new(),
         location: None,
     };
-    
+
     for (env_name, vars) in environments {
         let mut env_map = IndexMap::new();
         for (key, value) in vars {
@@ -271,30 +272,28 @@ pub fn create_test_manifest_from_envs(environments: &HashMap<String, HashMap<Str
         }
         manifest.environments.insert(env_name.clone(), env_map);
     }
-    
+
     manifest
 }
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::assert_validation_error;
-    
+
     #[test]
     fn test_doctor_catches_undefined_signer() {
         // This test would fail with HCL-only validation but passes with doctor
         let result = RunbookBuilder::new()
             .addon("evm", vec![])
             .action("deploy", "evm::deploy_contract")
-                .input("signer", "signer.undefined_signer")
+            .input("signer", "signer.undefined_signer")
             .validate_with_doctor(None, None);
-        
+
         // Doctor validation catches undefined signers!
         assert_validation_error!(result, "undefined_signer");
     }
-    
+
     // TODO: These tests require more advanced doctor validation
     // #[test]
     // fn test_doctor_validates_action_outputs() {
@@ -306,26 +305,26 @@ mod tests {
     //             .input("value", "1000")
     //         .output("bad", "action.send.invalid_field")  // send_eth only has tx_hash
     //         .validate_with_doctor(None, None);
-        
+
     //     assert_validation_error!(result, "Field 'invalid_field' does not exist");
     // }
-    
+
     // #[test]
     // fn test_doctor_validates_inputs_against_manifest() {
     //     // Create a manifest with environment variables
     //     let manifest = create_test_manifest_with_env(vec![
     //         ("production", vec![("API_URL", "https://api.example.com")]),
     //     ]);
-        
+
     //     // Test missing input validation
     //     let result = RunbookBuilder::new()
     //         .variable("key", "env.MISSING_KEY")
     //         .output("result", "input.key")
     //         .validate_with_doctor(Some(manifest), Some("production".to_string()));
-        
+
     //     assert_validation_error!(result, "MISSING_KEY");
     // }
-    
+
     #[test]
     fn test_hcl_vs_doctor_validation() {
         // Test case 1: HCL validation actually DOES catch invalid action field references
@@ -334,55 +333,55 @@ mod tests {
             .addon("evm", vec![])
             .signer("valid", "evm::web_wallet", vec![])
             .action("deploy", "evm::deploy_contract")
-                .input("from", "signer.valid")
-                .input("contract", "MyContract")
+            .input("from", "signer.valid")
+            .input("contract", "MyContract")
             .action("use_deploy", "evm::call_contract")
-                .input("contract", "action.deploy.nonexistent_field");
-        
+            .input("contract", "action.deploy.nonexistent_field");
+
         // HCL validation should fail for invalid field reference
         let hcl_result = runbook_with_invalid_field.validate();
         assert!(!hcl_result.success, "HCL validation should catch invalid field reference");
         assert!(hcl_result.errors.iter().any(|e| e.message.contains("nonexistent_field")));
-        
+
         // Test case 2: Valid runbook that passes both HCL and doctor validation
         let mut runbook_valid = RunbookBuilder::new()
             .addon("evm", vec![])
             .signer("valid", "evm::web_wallet", vec![])
             .action("deploy", "evm::deploy_contract")
-                .input("from", "signer.valid")
-                .input("contract", "MyContract")
+            .input("from", "signer.valid")
+            .input("contract", "MyContract")
             .action("use_deploy", "evm::call_contract")
-                .input("contract", "action.deploy.contract_address");  // Valid field
-        
+            .input("contract", "action.deploy.contract_address"); // Valid field
+
         // Both validations should pass
         let hcl_result = runbook_valid.validate();
         assert!(hcl_result.success, "HCL validation should pass for valid runbook");
-        
+
         let doctor_result = runbook_valid.validate_with_doctor(None, None);
         assert!(doctor_result.success, "Doctor validation should pass for valid runbook");
     }
-    
+
     #[test]
     fn test_env_var_validation() {
         let manifest = create_test_manifest_with_env(vec![
             ("development", vec![("API_KEY", "test-key")]),
-            ("production", vec![("API_KEY", "prod-key"), ("DB_URL", "postgres://...")])
+            ("production", vec![("API_KEY", "prod-key"), ("DB_URL", "postgres://...")]),
         ]);
-        
+
         // Test missing env var
         let result = RunbookBuilder::new()
             .variable("key", "env.MISSING_KEY")
             .output("result", "variable.key")
             .validate_with_doctor(Some(manifest.clone()), Some("production".to_string()));
-        
+
         assert_validation_error!(result, "MISSING_KEY");
-        
+
         // Test valid env var
         let result2 = RunbookBuilder::new()
             .variable("key", "env.API_KEY")
             .output("result", "variable.key")
             .validate_with_doctor(Some(manifest), Some("production".to_string()));
-        
+
         assert!(result2.success);
     }
 }

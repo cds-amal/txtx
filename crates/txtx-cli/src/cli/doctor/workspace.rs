@@ -19,15 +19,10 @@ impl WorkspaceAnalyzer {
     ) -> Option<RunbookLocation> {
         for metadata in &manifest.runbooks {
             if metadata.name == runbook_name {
-                let base_path = self.manifest_path
-                    .parent()
-                    .unwrap_or(Path::new("."));
+                let base_path = self.manifest_path.parent().unwrap_or(Path::new("."));
                 let runbook_path = base_path.join(&metadata.location);
-                
-                return Some(RunbookLocation {
-                    name: metadata.name.clone(),
-                    path: runbook_path,
-                });
+
+                return Some(RunbookLocation { name: metadata.name.clone(), path: runbook_path });
             }
         }
         None
@@ -39,19 +34,14 @@ impl WorkspaceAnalyzer {
         manifest: &WorkspaceManifest,
     ) -> Vec<(String, RunbookLocation)> {
         let mut runbooks = Vec::new();
-        let base_path = self.manifest_path
-            .parent()
-            .unwrap_or(Path::new("."));
+        let base_path = self.manifest_path.parent().unwrap_or(Path::new("."));
 
         for metadata in &manifest.runbooks {
             let runbook_path = base_path.join(&metadata.location);
-            let location = RunbookLocation {
-                name: metadata.name.clone(),
-                path: runbook_path,
-            };
+            let location = RunbookLocation { name: metadata.name.clone(), path: runbook_path };
             runbooks.push((metadata.name.clone(), location));
         }
-        
+
         runbooks
     }
 
@@ -61,7 +51,7 @@ impl WorkspaceAnalyzer {
             .map_err(|e| format!("Failed to get current directory: {}", e))?;
 
         let possible_files = vec!["main.tx", "txtx.tx", "runbook.tx"];
-        
+
         // First try common filenames
         for file in &possible_files {
             let path = current_dir.join(file);
@@ -100,6 +90,7 @@ pub struct RunbookLocation {
 
 impl RunbookLocation {
     /// Get the actual file path for the runbook
+    #[allow(dead_code)]
     pub fn file_path(&self) -> PathBuf {
         if self.path.is_dir() {
             // If it's a directory, look for main.tx
@@ -113,6 +104,7 @@ impl RunbookLocation {
     }
 
     /// Check if the runbook file exists
+    #[allow(dead_code)]
     pub fn exists(&self) -> bool {
         self.file_path().exists()
     }

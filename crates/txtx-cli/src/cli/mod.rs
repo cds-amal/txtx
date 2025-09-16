@@ -17,8 +17,7 @@ mod snapshots;
 
 /// Parse a single key-value pair
 fn parse_key_val(s: &str) -> Result<(String, String), String> {
-    let pos = s.find('=')
-        .ok_or_else(|| format!("invalid KEY=VALUE: no '=' found in '{}'", s))?;
+    let pos = s.find('=').ok_or_else(|| format!("invalid KEY=VALUE: no '=' found in '{}'", s))?;
     Ok((s[..pos].to_string(), s[pos + 1..].to_string()))
 }
 
@@ -402,11 +401,11 @@ async fn handle_command(
         Command::Doctor(cmd) => {
             use doctor::run_doctor;
             run_doctor(
-                cmd.manifest_path.clone(), 
-                cmd.runbook.clone(), 
+                cmd.manifest_path.clone(),
+                cmd.runbook.clone(),
                 cmd.environment.clone(),
                 cmd.inputs.clone(),
-                cmd.format.clone()
+                cmd.format.clone(),
             )?;
         }
     }

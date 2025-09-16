@@ -23,16 +23,9 @@ macro_rules! assert_error {
 #[macro_export]
 macro_rules! assert_validation_error {
     ($result:expr, $pattern:expr) => {
-        assert!(
-            !$result.success,
-            "Expected validation error, but validation succeeded"
-        );
-        let errors_str = $result
-            .errors
-            .iter()
-            .map(|e| e.to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
+        assert!(!$result.success, "Expected validation error, but validation succeeded");
+        let errors_str =
+            $result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n");
         assert!(
             errors_str.contains($pattern),
             "Expected error containing '{}', but got:\n{}",
@@ -46,22 +39,12 @@ macro_rules! assert_validation_error {
 #[macro_export]
 macro_rules! assert_parse_error {
     ($result:expr) => {
-        assert!(
-            !$result.success,
-            "Expected parse error, but parsing succeeded"
-        );
+        assert!(!$result.success, "Expected parse error, but parsing succeeded");
     };
     ($result:expr, $pattern:expr) => {
-        assert!(
-            !$result.success,
-            "Expected parse error, but parsing succeeded"
-        );
-        let errors_str = $result
-            .errors
-            .iter()
-            .map(|e| e.to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
+        assert!(!$result.success, "Expected parse error, but parsing succeeded");
+        let errors_str =
+            $result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n");
         assert!(
             errors_str.contains($pattern),
             "Expected error containing '{}', but got:\n{}",
@@ -76,10 +59,7 @@ macro_rules! assert_parse_error {
 macro_rules! assert_validation_warning {
     ($result:expr, $pattern:expr) => {
         let pattern = $pattern;
-        let found = $result
-            .warnings
-            .iter()
-            .any(|w| w.message.contains(pattern));
+        let found = $result.warnings.iter().any(|w| w.message.contains(pattern));
         if !found {
             let warnings_str = $result
                 .warnings
@@ -90,11 +70,7 @@ macro_rules! assert_validation_warning {
             panic!(
                 "Expected warning containing '{}', but got:\n{}",
                 pattern,
-                if warnings_str.is_empty() {
-                    "  (no warnings)".to_string()
-                } else {
-                    warnings_str
-                }
+                if warnings_str.is_empty() { "  (no warnings)".to_string() } else { warnings_str }
             );
         }
     };
@@ -105,12 +81,8 @@ macro_rules! assert_validation_warning {
 macro_rules! assert_success {
     ($result:expr) => {
         if !$result.success {
-            let errors_str = $result
-                .errors
-                .iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join("\n");
+            let errors_str =
+                $result.errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n");
             panic!("Expected success, but got errors:\n{}", errors_str);
         }
     };
@@ -142,10 +114,10 @@ mod tests {
             errors: vec![Diagnostic::error_from_string("undefined variable: foo".to_string())],
             warnings: vec![],
         };
-        
+
         assert_validation_error!(result, "undefined variable");
     }
-    
+
     #[test]
     fn test_assert_success() {
         let result = ExecutionResult {
@@ -153,7 +125,7 @@ mod tests {
             outputs: [("test".to_string(), "value".to_string())].into(),
             errors: vec![],
         };
-        
+
         assert_success!(result);
         assert_output!(result, "test", "value");
     }

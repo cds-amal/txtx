@@ -6,8 +6,8 @@
 use lsp_types::Url;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use txtx_core::manifest::file::read_runbook_from_location;
 use txtx_addon_kit::helpers::fs::FileLocation;
+use txtx_core::manifest::file::read_runbook_from_location;
 
 /// Information about a multi-file runbook
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ pub struct MultiFileRunbook {
 /// Check if a file is part of a multi-file runbook
 pub fn is_multi_file_runbook(file_uri: &Url) -> Option<PathBuf> {
     let file_path = PathBuf::from(file_uri.path());
-    
+
     // Check if the parent directory is a runbook directory
     if let Some(parent) = file_path.parent() {
         // Look for main.tx in the parent directory
@@ -34,7 +34,7 @@ pub fn is_multi_file_runbook(file_uri: &Url) -> Option<PathBuf> {
             return Some(parent.to_path_buf());
         }
     }
-    
+
     None
 }
 
@@ -44,7 +44,7 @@ pub fn load_multi_file_runbook(
     runbook_name: &str,
 ) -> Result<MultiFileRunbook, String> {
     let file_location = FileLocation::from_path_string(&root_dir.to_string_lossy())?;
-    
+
     // Use the same function as doctor to load the runbook
     let (_, _, runbook_sources) = read_runbook_from_location(
         &file_location,
@@ -52,34 +52,34 @@ pub fn load_multi_file_runbook(
         &None,
         Some(runbook_name),
     )?;
-    
+
     let mut files = HashMap::new();
     let mut combined_content = String::new();
     let mut file_boundaries = Vec::new();
     let mut current_line = 1usize;
-    
+
     // Process each file in the runbook
     for (file_location, (_name, raw_content)) in &runbook_sources.tree {
         let file_path = PathBuf::from(file_location.to_string());
         let file_uri = Url::from_file_path(&file_path)
             .map_err(|_| format!("Invalid file path: {}", file_path.display()))?;
-        
+
         let start_line = current_line;
         let content = raw_content.to_string();
-        
+
         // Add to combined content
         combined_content.push_str(&content);
         combined_content.push('\n');
-        
+
         // Track boundaries
         let line_count = content.lines().count();
         current_line += line_count + 1;
         file_boundaries.push((file_location.to_string(), start_line, current_line));
-        
+
         // Store individual file content
         files.insert(file_uri, content);
     }
-    
+
     Ok(MultiFileRunbook {
         root_dir: root_dir.to_path_buf(),
         files,
@@ -110,7 +110,7 @@ pub fn get_runbook_name_for_file(
     let file_path = PathBuf::from(file_uri.path());
     eprintln!("[DEBUG] get_runbook_name_for_file: checking file_path: {:?}", file_path);
     eprintln!("[DEBUG] Manifest has {} runbooks", manifest.runbooks.len());
-    
+
     // Check each runbook in the manifest
     for runbook in &manifest.runbooks {
         eprintln!("[DEBUG] Checking runbook: {} with location: {}", runbook.name, runbook.location);
@@ -119,7 +119,7 @@ pub fn get_runbook_name_for_file(
         } else {
             PathBuf::from(&runbook.location)
         };
-        
+
         eprintln!("[DEBUG] Checking if {:?} starts with {:?}", file_path, runbook_path);
         // Check if the file is inside this runbook's directory
         if file_path.starts_with(&runbook_path) {
@@ -127,6 +127,6 @@ pub fn get_runbook_name_for_file(
             return Some(runbook.name.clone());
         }
     }
-    
+
     None
 }

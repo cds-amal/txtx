@@ -1,5 +1,5 @@
-use txtx_core::validation::ValidationResult;
 use ansi_term::Colour::{Blue, Red, Yellow};
+use txtx_core::validation::ValidationResult;
 
 /// Display results in pretty format (human-readable with colors)
 pub fn display(result: &ValidationResult) {
@@ -22,10 +22,11 @@ pub fn display(result: &ValidationResult) {
 fn display_errors(result: &ValidationResult) {
     for (i, error) in result.errors.iter().enumerate() {
         let location = format_location(&error.file, error.line, error.column);
-        
-        println!("{}{} {}", 
+
+        println!(
+            "{}{} {}",
             location,
-            Red.bold().paint(format!("error[{}]:", i + 1)), 
+            Red.bold().paint(format!("error[{}]:", i + 1)),
             Red.paint(&error.message)
         );
 
@@ -45,13 +46,9 @@ fn display_errors(result: &ValidationResult) {
 fn display_warnings(result: &ValidationResult) {
     for warning in &result.warnings {
         let location = format_location(&warning.file, warning.line, warning.column);
-        
-        println!("{}{} {}", 
-            location,
-            Yellow.paint("warning:"), 
-            warning.message
-        );
-        
+
+        println!("{}{} {}", location, Yellow.paint("warning:"), warning.message);
+
         if let Some(suggestion) = &warning.suggestion {
             println!("   {} {}", Blue.paint("Suggestion:"), suggestion);
         }
