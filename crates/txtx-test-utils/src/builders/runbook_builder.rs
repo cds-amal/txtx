@@ -173,7 +173,7 @@ impl RunbookBuilder {
 variable "{}" {{
     value = {}
 }}"#, name, 
-            if value.starts_with("env.") || value.starts_with("input.") || value.starts_with("action.") {
+            if value.starts_with("env.") || value.starts_with("input.") || value.starts_with("action.") || value.starts_with("variable.") {
                 value.to_string()
             } else {
                 format!(r#""{}""#, value)

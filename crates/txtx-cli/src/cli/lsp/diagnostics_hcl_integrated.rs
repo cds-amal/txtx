@@ -126,7 +126,6 @@ pub fn validate_runbook_with_hcl(
 /// - "line 5, column 10"
 /// - "at 5:10"
 /// - "on line 5"
-#[cfg(test)]
 pub fn extract_position_from_error(error_msg: &str) -> (usize, usize) {
     // Try to find line number
     let line = if let Some(pos) = error_msg.find("line ") {

@@ -87,7 +87,6 @@ mod lsp_diagnostics_tests {
     
     // Test that LSP provides diagnostics for undefined references
     #[test]
-    #[ignore = "Validation for undefined references not yet implemented"]
     fn test_lsp_undefined_reference_diagnostics() {
         let mut builder = RunbookBuilder::new()
             .addon("evm", vec![])
