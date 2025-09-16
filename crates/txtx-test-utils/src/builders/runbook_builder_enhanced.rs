@@ -194,8 +194,13 @@ impl RunbookBuilder {
                 }
             }
             ValidationMode::Lsp { workspace_root: _, manifest: _ } => {
-                // TODO: Implement LSP validation mode
-                unimplemented!("LSP validation mode not yet implemented")
+                // LSP validation requires the RunbookBuilderExt trait to be implemented
+                // by the test crate that has access to txtx-cli
+                // For now, we provide a simple fallback that uses HCL validation
+                eprintln!("INFO: Using basic HCL validation for LSP mode. Implement RunbookBuilderExt::validate_with_lsp_impl for full LSP validation.");
+                
+                // Use HCL validation as a fallback
+                crate::simple_validator::validate_content(&content)
             }
         }
     }

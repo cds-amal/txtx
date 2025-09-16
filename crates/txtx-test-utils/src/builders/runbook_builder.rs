@@ -243,6 +243,16 @@ signer "{}" "{}" {{
         self
     }
     
+    /// Get the content being built (for internal use by extensions)
+    pub(crate) fn get_content(&self) -> &str {
+        &self.content
+    }
+    
+    /// Get the additional files (for internal use by extensions)
+    pub(crate) fn get_files(&self) -> &HashMap<String, String> {
+        &self.files
+    }
+    
     /// Build the final content
     pub fn build_content(&mut self) -> String {
         // Close any open action

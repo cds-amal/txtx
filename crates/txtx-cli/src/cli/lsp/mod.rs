@@ -5,7 +5,10 @@ mod utils;
 mod diagnostics;
 mod diagnostics_enhanced;
 mod diagnostics_multi_file;
+
 mod diagnostics_hcl_integrated;
+
+
 mod validation;
 mod multi_file;
 

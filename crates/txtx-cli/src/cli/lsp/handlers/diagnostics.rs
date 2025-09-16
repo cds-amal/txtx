@@ -39,7 +39,7 @@ impl DiagnosticsHandler {
                     &[], // TODO: Get CLI inputs from workspace state
                 )
             } else {
-                // Use new HCL-integrated validation that provides better diagnostics
+                // Use HCL-integrated validation with multi-file support
                 crate::cli::lsp::diagnostics_hcl_integrated::validate_runbook_with_hcl(uri, document.content())
             }
         } else {

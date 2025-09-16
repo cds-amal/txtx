@@ -1,7 +1,5 @@
 use txtx_test_utils::builders::{RunbookBuilder, create_test_manifest_with_env};
 use txtx_core::manifest::WorkspaceManifest;
-use txtx_addon_kit::indexmap::IndexMap;
-use std::path::PathBuf;
 
 // Helper macros for common assertions
 macro_rules! assert_validation_error {
@@ -197,7 +195,6 @@ mod doctor_fixture_tests {
 
 #[cfg(test)]
 mod doctor_hcl_vs_doctor_comparison {
-    use super::*;
     
     // This test demonstrates the difference between HCL-only and Doctor validation
     #[test]

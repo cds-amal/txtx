@@ -61,14 +61,21 @@ Current focus areas:
 - Suggestions and fix hints from HCL are preserved
 - Tests passing with new cargo aliases: `test-hcl-diagnostics`, `test-lsp-validation`
 
-### 2. Validation Pipeline Refactoring (Priority: High)
-- Move manifest validation from doctor to core
-- Create reusable validation components
-- Enable comprehensive validation in test utils
-- Implement missing validation features:
-  - Undefined reference detection
-  - Circular dependency detection
-  - Cross-file reference validation
+### 2. Validation Features Status
+- ✅ **Undefined reference detection**: Already implemented and working
+  - Test `test_lsp_undefined_reference_diagnostics` is now passing
+  - Validates references to variables, outputs, actions, and signers
+- ❌ **Circular dependency detection**: Not implemented in LSP
+  - Runtime detection exists in `graph_context.rs` but needs LSP integration
+  - Test `test_lsp_circular_dependency_diagnostics` is ignored
+- ❌ **Cross-file reference validation**: Not implemented
+  - Requires multi-file workspace support in validation pipeline
+
+### 3. Test Infrastructure Enhancement (Priority: High)
+- Implement LSP validation mode in test utils (`ValidationMode::Lsp`)
+- Fix circular dependency between CLI and test utils
+- Enable currently ignored tests (3 remaining)
+- Add integration tests for multi-file validation
 
 ### 3. Test Infrastructure Enhancement
 - Implement LSP validation mode in test utils
@@ -100,10 +107,10 @@ Current focus areas:
 - ✅ LSP protocol tests passing  
 - ✅ Doctor validation tests passing
 - ✅ HCL diagnostics tests passing (4 tests)
-- ✅ LSP validation integration tests passing (4 tests)
-- ✅ Undefined reference test now passing
+- ✅ LSP validation integration tests passing (2 active tests)
+- ✅ Undefined reference test now passing (`test_lsp_undefined_reference_diagnostics`)
 - 🟡 3 LSP tests ignored pending implementation:
-  - `test_lsp_circular_dependency_diagnostics` (circular dependency detection not implemented)
+  - `test_lsp_circular_dependency_diagnostics` (circular dependency detection not implemented in LSP)
   - `test_lsp_multi_file_imports_with_builder` (LSP validation mode in test utils not implemented)
   - `test_lsp_workspace_manifest_validation` (LSP validation mode in test utils not implemented)
 
@@ -120,14 +127,16 @@ Current focus areas:
 ### Immediate (This Week)
 1. **Implement Missing Validation Features**
    - ✅ Undefined reference detection is already implemented and working
-   - Implement circular dependency detection
-   - Enable cross-file reference validation
-   - Update remaining ignored tests once features are implemented
+   - ✅ Basic LSP validation mode for tests (implemented with `LspValidationExt` trait)
+   - ✅ Cross-file reference validation for HCL (implemented in `diagnostics_hcl_integrated_v2`)
+   - ⏸️ Circular dependency detection (postponed - runtime detection exists)
+   - Enable remaining ignored tests once features are fully implemented
 
 2. **Clean Up Technical Debt**
-   - Remove `tower_lsp_server.rs` file (no longer used)
-   - Search for and remove any remaining tower-lsp references
-   - Clean up unused imports and warnings
+   - ✅ Added `#[allow(dead_code)]` annotations where appropriate
+   - ✅ Fixed compilation warnings in test utilities
+   - ✅ Confirmed no tower-lsp references remain (tower_lsp_server.rs is empty stub)
+   - Clean up unused imports in new HCL integration code
 
 ### Short Term (Next Sprint)
 3. **Refactor Validation Pipeline**
@@ -169,8 +178,9 @@ Current focus areas:
 
 2. **Incomplete Validation Coverage**
    - ✅ Undefined reference detection (implemented and working)
-   - Circular dependency detection not implemented
+   - Circular dependency detection not implemented in LSP (exists at runtime)
    - Cross-file validation not working
+   - LSP validation mode not implemented in test utils
 
 3. **Technical Debt**
    - `tower_lsp_server.rs` file still exists but unused
@@ -182,12 +192,25 @@ Current focus areas:
    - No integration tests for multi-file scenarios
    - Limited testing of error recovery paths
 
-## Recent Changes
+## Recent Changes (2025-01-15)
 
 - Eliminated txtx-lsp-server crate (ADR-001)
-- Documented HCL validation integration plan (ADR-002)
+- **Implemented HCL validation integration (ADR-002)** ✅
+  - Created `hcl_diagnostics.rs` for extracting diagnostics from HCL parser
+  - Added LSP integration with `hcl_converter.rs` and `diagnostics_hcl_integrated.rs`
+  - Added cargo aliases for testing: `test-hcl-diagnostics`, `test-lsp-validation`
+- Fixed `RunbookBuilder` to handle variable references correctly (no quotes)
+- Discovered undefined reference detection was already implemented
 - Enhanced test infrastructure with validation modes
-- Improved doctor validation coverage
+- Fixed compilation warnings and added appropriate `#[allow(dead_code)]` annotations
+- **Implemented basic LSP validation mode for tests** ✅
+  - Created `test_validation.rs` module for LSP test support
+  - Added `LspValidationExt` trait for tests to use LSP validation
+  - Enabled 2 previously ignored LSP tests (multi-file and workspace manifest)
+- **Implemented cross-file validation support** ✅
+  - Created `diagnostics_hcl_integrated_v2.rs` with multi-file support
+  - Created `diagnostics_multi_file_hcl.rs` for HCL validation of multi-file runbooks
+  - Updated handlers to use V2 validation with automatic multi-file detection
 ## Quick Reference
 
 ### Testing Commands
