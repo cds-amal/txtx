@@ -103,16 +103,18 @@ Current focus areas:
 ## Testing Status
 
 ### Current Test Coverage
-- ✅ Core functionality tests passing
+- ✅ Core functionality tests passing (75 total tests)
 - ✅ LSP protocol tests passing  
-- ✅ Doctor validation tests passing
-- ✅ HCL diagnostics tests passing (4 tests)
-- ✅ LSP validation integration tests passing (2 active tests)
-- ✅ Undefined reference test now passing (`test_lsp_undefined_reference_diagnostics`)
-- 🟡 3 LSP tests ignored pending implementation:
-  - `test_lsp_circular_dependency_diagnostics` (circular dependency detection not implemented in LSP)
-  - `test_lsp_multi_file_imports_with_builder` (LSP validation mode in test utils not implemented)
-  - `test_lsp_workspace_manifest_validation` (LSP validation mode in test utils not implemented)
+- ✅ Doctor validation tests passing (7 active tests)
+- ✅ HCL diagnostics tests passing
+- ✅ LSP validation integration tests passing (6 tests)
+- ✅ Undefined reference test now passing
+- 🟡 5 doctor tests ignored due to circular dependency:
+  - `test_doctor_flow_missing_variable_with_builder`
+  - `test_doctor_env_validation_with_builder` 
+  - `test_doctor_cli_input_validation_with_builder`
+  - `test_doctor_nested_field_access_with_builder`
+  - `test_validation_mode_differences`
 
 ### Test Infrastructure
 - Using `txtx-test-utils` for integration testing
@@ -127,16 +129,16 @@ Current focus areas:
 ### Immediate (This Week)
 1. **Implement Missing Validation Features**
    - ✅ Undefined reference detection is already implemented and working
-   - ✅ Basic LSP validation mode for tests (implemented with `LspValidationExt` trait)
-   - ✅ Cross-file reference validation for HCL (implemented in `diagnostics_hcl_integrated_v2`)
+   - ✅ Basic test infrastructure cleanup completed
+   - ✅ Fixed compilation errors in test utilities
    - ⏸️ Circular dependency detection (postponed - runtime detection exists)
-   - Enable remaining ignored tests once features are fully implemented
+   - ⏸️ Enable ignored tests (blocked by circular dependency issue)
 
 2. **Clean Up Technical Debt**
    - ✅ Added `#[allow(dead_code)]` annotations where appropriate
    - ✅ Fixed compilation warnings in test utilities
-   - ✅ Confirmed no tower-lsp references remain (tower_lsp_server.rs is empty stub)
-   - Clean up unused imports in new HCL integration code
+   - ✅ Removed experimental LSP validation code that was causing errors
+   - ✅ Cleaned up duplicate method definitions
 
 ### Short Term (Next Sprint)
 3. **Refactor Validation Pipeline**
