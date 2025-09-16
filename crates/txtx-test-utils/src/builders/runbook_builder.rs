@@ -198,7 +198,7 @@ action "{}" "{}" {{"#, name, action_type));
     pub fn input(mut self, name: &str, value: &str) -> Self {
         if self.current_action.is_some() {
             self.building_content.push(format!("    {} = {}", name, 
-                if value.starts_with("signer.") || value.starts_with("input.") || value.starts_with("action.") || value.parse::<i64>().is_ok() {
+                if value.starts_with("signer.") || value.starts_with("input.") || value.starts_with("action.") || value.starts_with("variable.") || value.parse::<i64>().is_ok() {
                     value.to_string()
                 } else {
                     format!(r#""{}""#, value)
