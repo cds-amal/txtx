@@ -244,11 +244,13 @@ signer "{}" "{}" {{
     }
     
     /// Get the content being built (for internal use by extensions)
+    #[allow(dead_code)]
     pub(crate) fn get_content(&self) -> &str {
         &self.content
     }
     
-    /// Get the additional files (for internal use by extensions)
+    // Helper for test harness (not used by builder itself)
+    #[allow(dead_code)]
     pub(crate) fn get_files(&self) -> &HashMap<String, String> {
         &self.files
     }
@@ -295,6 +297,5 @@ signer "{}" "{}" {{
             errors: vec![],
         }
     }
-    
 
 }
