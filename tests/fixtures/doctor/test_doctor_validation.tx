@@ -1,7 +1,0 @@
-flow "main" {
-    chain_id = 1
-}
-
-variable "test" {
-    value = flow.undefined_attr
-}
