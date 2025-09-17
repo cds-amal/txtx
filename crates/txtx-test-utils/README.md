@@ -1,18 +1,28 @@
 # txtx-test-utils
 
-Testing utilities for txtx runbooks, providing a fluent builder API and validation helpers.
+Testing utilities for txtx runbooks, providing both validation testing and execution testing tools.
 
 ## Overview
 
-`txtx-test-utils` simplifies writing tests for txtx runbooks by providing:
+`txtx-test-utils` consolidates all txtx testing utilities in one place:
+
+### Validation Testing (New)
+
 - **RunbookBuilder**: A fluent API for constructing test runbooks
+- **SimpleValidator**: Lightweight validation without execution
 - **Validation modes**: HCL-only vs full manifest validation
 - **Test assertions**: Helpers for checking validation results
-- **Mock support**: Testing with simulated blockchain responses
+
+### Execution Testing (Moved from txtx-core)
+
+- **TestHarness**: Full runbook execution with mocked blockchain responses
+- **Mock support**: Simulating blockchain interactions
+- **Action flow testing**: Testing complete runbook execution paths
 
 ## Validation Modes
 
 ### 1. HCL-Only Validation (Default)
+
 Basic syntax and semantic validation without manifest checking:
 
 ```rust
@@ -24,12 +34,14 @@ let result = RunbookBuilder::new()
 ```
 
 This validates:
+
 - ✅ HCL syntax correctness
 - ✅ Known addon namespaces
 - ✅ Valid action types
 - ❌ Does NOT validate: signer references, action outputs, env variables
 
 ### 2. Manifest Validation
+
 Full validation including environment variables and input checking:
 
 ```rust
@@ -46,6 +58,7 @@ let result = RunbookBuilder::new()
 ```
 
 This additionally validates:
+
 - ✅ All `env.*` references have corresponding environment variables
 - ✅ Environment inheritance (e.g., "defaults" → "production")
 - ✅ CLI input overrides
@@ -149,10 +162,67 @@ impl RunbookBuilderExt for RunbookBuilder {
 result.validate_with_doctor(manifest, Some("production".to_string()));
 ```
 
+## Execution Testing with TestHarness
+
+For testing full runbook execution (moved from txtx-core):
+
+```rust
+use txtx_test_utils::TestHarness;
+
+// Create test harness
+let mut harness = TestHarness::new(/* ... */);
+
+// Start runbook execution
+harness.start_runbook(runbook, addons, inputs);
+
+// Test execution flow
+let event = harness.receive_event();
+harness.expect_action_item_request(|req| {
+    assert_eq!(req.action_type, "evm::deploy_contract");
+});
+
+// Mock blockchain response
+harness.send(ActionItemResponse {
+    status: ActionItemStatus::Executed,
+    outputs: vec![("contract_address", "0x123...")],
+});
+
+// Verify completion
+harness.expect_runbook_complete();
+```
+
+## When to Use Each Tool
+
+### Use RunbookBuilder + SimpleValidator when
+
+- Testing validation logic (syntax, semantics, references)
+- Writing unit tests for runbook structure
+- Testing error messages and validation rules
+- You don't need to execute the runbook
+
+### Use TestHarness when
+
+- Testing full runbook execution flow
+- Testing action sequencing and dependencies
+- Testing with mocked blockchain responses
+- Integration testing with multiple actions
+
 ## Testing Best Practices
 
-1. **Always specify environment for manifest validation** - Don't rely on partial "defaults" validation
-2. **Use appropriate validation mode** - HCL-only for syntax, manifest for full validation  
-3. **Test error cases** - Ensure your runbooks fail appropriately
-4. **Use CLI inputs for overrides** - Test precedence of configuration sources
-5. **Mock external calls** - Use `with_mock()` for blockchain interactions
+1. **For validation tests:**
+   - Always specify environment for manifest validation
+   - Use appropriate validation mode (HCL-only vs manifest)
+   - Test both positive and negative cases
+   - Use CLI inputs for testing override behavior
+
+2. **For execution tests:**
+   - Use TestHarness for full execution flow
+   - Mock external blockchain calls appropriately
+   - Test error handling and recovery paths
+   - Verify action outputs and state transitions
+
+3. **General practices:**
+   - Keep validation and execution tests separate
+   - Use descriptive test names
+   - Test edge cases and error conditions
+   - Document complex test scenarios
