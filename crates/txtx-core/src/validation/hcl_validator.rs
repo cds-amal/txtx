@@ -12,9 +12,21 @@ use txtx_addon_kit::hcl::{
     Span,
 };
 
-use super::addon_specifications::{get_action_doc_link, get_addon_specifications};
 use super::types::{LocatedInputRef, ValidationError, ValidationResult};
 use crate::kit::types::commands::CommandSpecification;
+
+/// Get documentation link for an action
+fn get_action_doc_link(namespace: &str, action: &str) -> Option<String> {
+    match namespace {
+        "bitcoin" => Some(format!("https://docs.txtx.sh/addons/bitcoin/actions#{}", action)),
+        "evm" => Some(format!("https://docs.txtx.sh/addons/evm/actions#{}", action)),
+        "stacks" => Some(format!("https://docs.txtx.sh/addons/stacks/actions#{}", action)),
+        "svm" => Some(format!("https://docs.txtx.sh/addons/svm/actions#{}", action)),
+        "ovm" => Some(format!("https://docs.txtx.sh/addons/ovm/actions#{}", action)),
+        "telegram" => Some(format!("https://docs.txtx.sh/addons/telegram/actions#{}", action)),
+        _ => None,
+    }
+}
 
 /// A visitor that validates HCL runbooks
 pub struct HclValidationVisitor<'a> {
@@ -73,7 +85,7 @@ impl<'a> HclValidationVisitor<'a> {
             source,
             action_types: HashMap::new(),
             action_specs: HashMap::new(),
-            addon_specs: get_addon_specifications(),
+            addon_specs: HashMap::new(), // Default to empty, use new_with_addons for real specs
             defined_variables: HashSet::new(),
             defined_signers: HashMap::new(),
             defined_outputs: HashSet::new(),

@@ -3,7 +3,6 @@
 //! This module provides validation functionality that is shared between
 //! the doctor command (CLI) and the LSP for real-time error detection.
 
-pub mod addon_specifications;
 pub mod context;
 pub mod doctor_rules;
 pub mod hcl_diagnostics;
