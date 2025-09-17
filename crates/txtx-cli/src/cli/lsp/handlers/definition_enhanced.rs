@@ -98,15 +98,30 @@ fn extract_reference_at_position(content: &str, position: &Position) -> Option<R
     let lines: Vec<&str> = content.lines().collect();
     let line = lines.get(position.line as usize)?;
 
+    // Check for variable definition pattern: variable "name" {
+    let var_def_re = Regex::new(r#"variable\s+"([^"]+)""#).ok()?;
+    for capture in var_def_re.captures_iter(line) {
+        if let Some(name_match) = capture.get(1) {
+            let name_start = name_match.start() as u32;
+            let name_end = name_match.end() as u32;
+
+            // If cursor is on the variable name in definition, treat it as a reference to itself
+            if position.character >= name_start && position.character <= name_end {
+                return Some(Reference::Variable(name_match.as_str().to_string()));
+            }
+        }
+    }
+
     // Check for signer reference in signer = "name" format
     let signer_string_re = Regex::new(r#"signer\s*=\s*"([^"]+)""#).ok()?;
     for capture in signer_string_re.captures_iter(line) {
         if let Some(name_match) = capture.get(1) {
-            let full_match = capture.get(0)?;
-            let start = full_match.start() as u32;
-            let end = full_match.end() as u32;
+            // Get the position of just the name part (inside the quotes)
+            let name_start = name_match.start() as u32;
+            let name_end = name_match.end() as u32;
 
-            if position.character >= start && position.character < end {
+            // Check if cursor is within the name part specifically
+            if position.character >= name_start && position.character <= name_end {
                 return Some(Reference::Signer(name_match.as_str().to_string()));
             }
         }
@@ -116,7 +131,8 @@ fn extract_reference_at_position(content: &str, position: &Position) -> Option<R
     let patterns: Vec<(&str, Box<dyn Fn(&str) -> Reference>)> = vec![
         (r"input\.(\w+)", Box::new(|name: &str| Reference::Input(name.to_string()))),
         (r"flow\.(\w+)", Box::new(|name: &str| Reference::Flow(name.to_string()))),
-        (r"var\.(\w+)", Box::new(|name: &str| Reference::Variable(name.to_string()))),
+        (r"variable\.(\w+)", Box::new(|name: &str| Reference::Variable(name.to_string()))),  // Full form
+        (r"var\.(\w+)", Box::new(|name: &str| Reference::Variable(name.to_string()))),       // Short form
         (r"action\.(\w+)", Box::new(|name: &str| Reference::Action(name.to_string()))),
         (r"signer\.(\w+)", Box::new(|name: &str| Reference::Signer(name.to_string()))),
     ];
@@ -247,6 +263,107 @@ fn find_signer_definition(uri: &Url, content: &str, signer_name: &str) -> Option
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_signer_reference_from_string() {
+        let content = r#"action "test" "evm::send_tx" {
+  signer = "my_signer"
+}"#;
+        // Line 1 is: '  signer = "my_signer"'
+        // "my_signer" starts at position 12
+
+        // Test cursor on "my_signer" (the 'm' at position 12)
+        let position = Position { line: 1, character: 12 };
+        let result = extract_reference_at_position(content, &position);
+        assert!(matches!(result, Some(Reference::Signer(ref name)) if name == "my_signer"));
+
+        // Test cursor at the end of "my_signer" (position 20)
+        let position = Position { line: 1, character: 20 };
+        let result = extract_reference_at_position(content, &position);
+        assert!(matches!(result, Some(Reference::Signer(ref name)) if name == "my_signer"));
+
+        // Test cursor outside the name (position 22, after closing quote)
+        let position = Position { line: 1, character: 22 };
+        let result = extract_reference_at_position(content, &position);
+        assert!(result.is_none() || !matches!(result, Some(Reference::Signer(_))));
+    }
+
+    #[test]
+    fn test_extract_signer_reference_from_property() {
+        let content = "  signer = signer.my_signer";
+
+        // Test cursor on "signer.my_signer"
+        let position = Position { line: 0, character: 15 };
+        let result = extract_reference_at_position(content, &position);
+        assert!(matches!(result, Some(Reference::Signer(ref name)) if name == "my_signer"));
+    }
+
+    #[test]
+    fn test_extract_variable_reference_full_form() {
+        let content = "value = variable.my_var + 1";
+
+        // Test cursor on "variable.my_var"
+        let position = Position { line: 0, character: 12 };
+        let result = extract_reference_at_position(content, &position);
+        assert!(matches!(result, Some(Reference::Variable(ref name)) if name == "my_var"));
+    }
+
+    #[test]
+    fn test_extract_variable_reference_short_form() {
+        let content = "value = var.count * 2";
+
+        // Test cursor on "var.count"
+        let position = Position { line: 0, character: 10 };
+        let result = extract_reference_at_position(content, &position);
+        assert!(matches!(result, Some(Reference::Variable(ref name)) if name == "count"));
+    }
+
+    #[test]
+    fn test_extract_variable_from_definition() {
+        let content = r#"variable "api_key" {"#;
+
+        // Test cursor on "api_key" in the definition
+        let position = Position { line: 0, character: 12 };
+        let result = extract_reference_at_position(content, &position);
+        assert!(matches!(result, Some(Reference::Variable(ref name)) if name == "api_key"));
+    }
+
+    #[test]
+    fn test_find_variable_definition() {
+        let content = r#"
+variable "count" {
+    value = 10
+}
+
+variable "api_key" {
+    value = "secret"
+}
+"#;
+        let uri = Url::parse("file:///test.tx").unwrap();
+
+        // Test finding "count" variable
+        let location = find_variable_definition(&uri, content, "count");
+        assert!(location.is_some());
+        if let Some(loc) = location {
+            assert_eq!(loc.range.start.line, 1);
+        }
+
+        // Test finding "api_key" variable
+        let location = find_variable_definition(&uri, content, "api_key");
+        assert!(location.is_some());
+        if let Some(loc) = location {
+            assert_eq!(loc.range.start.line, 5);
+        }
+
+        // Test non-existent variable
+        let location = find_variable_definition(&uri, content, "nonexistent");
+        assert!(location.is_none());
+    }
 }
 
 fn find_signer_in_environment_files(uri: &Url, signer_name: &str) -> Option<Location> {
