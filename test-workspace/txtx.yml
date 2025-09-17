@@ -36,7 +36,11 @@ runbooks:
         description: Sender address
 
 environments:
-  default:
+  global:
     contract_address: "0x1234567890abcdef"
     private_key: "test_private_key"
     api_url: "https://api.test.com"
+    rpc_url: "https://sepolia.infura.io/v3/test"
+    confirmations: "6"
+  sepolia:
+    rpc_url: "https://sepolia.infura.io/v3/sepolia-key"

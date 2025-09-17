@@ -42,6 +42,7 @@ pub fn is_multi_file_runbook(file_uri: &Url) -> Option<PathBuf> {
 pub fn load_multi_file_runbook(
     root_dir: &Path,
     runbook_name: &str,
+    environment: Option<&str>,
 ) -> Result<MultiFileRunbook, String> {
     let file_location = FileLocation::from_path_string(&root_dir.to_string_lossy())?;
 
@@ -49,7 +50,7 @@ pub fn load_multi_file_runbook(
     let (_, _, runbook_sources) = read_runbook_from_location(
         &file_location,
         &Some(runbook_name.to_string()),
-        &None,
+        &environment.map(|e| e.to_string()),
         Some(runbook_name),
     )?;
 

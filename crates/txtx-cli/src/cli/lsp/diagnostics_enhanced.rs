@@ -167,6 +167,7 @@ fn get_effective_inputs(
         for (key, value) in global_env {
             effective_inputs.insert(key.clone(), value.clone());
         }
+    } else {
     }
 
     // Then, override with environment-specific inputs
@@ -175,6 +176,7 @@ fn get_effective_inputs(
             for (key, value) in env {
                 effective_inputs.insert(key.clone(), value.clone());
             }
+        } else {
         }
     }
 
@@ -185,6 +187,70 @@ fn get_effective_inputs(
 mod tests {
     use super::*;
     use lsp_types::Url;
+
+    #[test]
+    fn test_environment_inheritance() {
+        let content = r#"
+addon "evm" "ethereum" {
+    chain_id = 11155111
+    rpc_url = input.rpc_url
+}
+
+action "check" "std::echo" {
+    value = input.confirmations
+}
+"#;
+
+        // Create manifest with global and sepolia environments
+        let mut environments = HashMap::new();
+
+        // Global environment with confirmations
+        let mut global_env = HashMap::new();
+        global_env.insert("rpc_url".to_string(), "https://global.rpc".to_string());
+        global_env.insert("confirmations".to_string(), "6".to_string());
+        environments.insert("global".to_string(), global_env);
+
+        // Sepolia environment overrides rpc_url only
+        let mut sepolia_env = HashMap::new();
+        sepolia_env.insert("rpc_url".to_string(), "https://sepolia.rpc".to_string());
+        environments.insert("sepolia".to_string(), sepolia_env);
+
+        let manifest = Manifest {
+            uri: Url::parse("file:///test/txtx.yml").unwrap(),
+            runbooks: vec![],
+            environments,
+        };
+
+        // Run validation with sepolia environment
+        let diagnostics = validate_runbook_with_doctor_rules(
+            &Url::parse("file:///test/test.tx").unwrap(),
+            content,
+            Some(&manifest),
+            Some("sepolia"),
+            &[],
+        );
+
+        // Print diagnostics for debugging
+        for diag in &diagnostics {
+            eprintln!("Diagnostic: {}", diag.message);
+        }
+
+        // Should not have errors about confirmations since it's in global
+        assert!(
+            !diagnostics
+                .iter()
+                .any(|d| d.message.contains("confirmations") && d.message.contains("not defined")),
+            "Should inherit 'confirmations' from global environment"
+        );
+
+        // Should not have errors about rpc_url since it's in sepolia
+        assert!(
+            !diagnostics
+                .iter()
+                .any(|d| d.message.contains("rpc_url") && d.message.contains("not defined")),
+            "Should have 'rpc_url' in sepolia environment"
+        );
+    }
 
     #[test]
     fn test_validate_missing_input() {
@@ -219,6 +285,73 @@ mod tests {
         assert!(diagnostics
             .iter()
             .any(|d| d.message.contains("deployer_key") && d.message.contains("not defined")));
+    }
+
+    #[test]
+    fn test_chain_id_validation() {
+        let content = r#"
+// Test runbook using input.chain_id
+addon "evm" "ethereum" {
+    chain_id = input.chain_id
+    rpc_url = input.rpc_url
+}
+
+action "deploy" "evm::deploy_contract" {
+    contract = "./contract.sol"
+}
+
+output "sanity-check" {
+    value = "Deployed on chain ${input.chain_id}"
+}
+"#;
+
+        // Create manifest with global environment containing chain_id
+        let mut environments = HashMap::new();
+
+        // Global environment with chain_id
+        let mut global_env = HashMap::new();
+        global_env.insert("chain_id".to_string(), "1".to_string());
+        global_env.insert("rpc_url".to_string(), "https://global.rpc".to_string());
+        environments.insert("global".to_string(), global_env);
+
+        // Sepolia environment only has rpc_url override
+        let mut sepolia_env = HashMap::new();
+        sepolia_env.insert("rpc_url".to_string(), "https://sepolia.rpc".to_string());
+        environments.insert("sepolia".to_string(), sepolia_env);
+
+        let manifest = Manifest {
+            uri: Url::parse("file:///test/txtx.yml").unwrap(),
+            runbooks: vec![],
+            environments,
+        };
+
+        // Run validation with sepolia environment
+        let diagnostics = validate_runbook_with_doctor_rules(
+            &Url::parse("file:///test/test.tx").unwrap(),
+            content,
+            Some(&manifest),
+            Some("sepolia"),
+            &[],
+        );
+
+        // Print all diagnostics
+        eprintln!("\n=== DIAGNOSTICS OUTPUT ===");
+        for diag in &diagnostics {
+            eprintln!("Diagnostic: {}", diag.message);
+        }
+        eprintln!("=== END DIAGNOSTICS ===\n");
+
+        // Check if chain_id is found
+        let chain_id_errors: Vec<_> = diagnostics
+            .iter()
+            .filter(|d| d.message.contains("chain_id") && d.message.contains("not defined"))
+            .collect();
+
+        assert!(
+            chain_id_errors.is_empty(),
+            "chain_id should be inherited from global environment, but got errors: {:?}",
+            chain_id_errors.iter().map(|d| &d.message).collect::<Vec<_>>()
+        );
     }
 
     #[test]

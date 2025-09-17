@@ -45,6 +45,10 @@
       {
         "command": "txtx.restartLsp",
         "title": "Txtx: Restart Language Server"
+      },
+      {
+        "command": "txtx.selectEnvironment",
+        "title": "Txtx: Select Environment"
       }
     ],
     "configuration": {
@@ -65,6 +69,12 @@
           ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
+        },
+        "txtx.currentEnvironment": {
+          "type": "string",
+          "default": "global",
+          "description": "The currently selected Txtx environment for validation",
+          "scope": "resource"
         }
       }
     }

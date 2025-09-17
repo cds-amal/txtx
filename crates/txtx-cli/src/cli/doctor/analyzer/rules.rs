@@ -62,7 +62,7 @@ impl ValidationRule for InputDefinedRule {
         if ctx.effective_inputs.contains_key(ctx.input_name) {
             ValidationOutcome::Pass
         } else {
-            let env_name = ctx.environment.unwrap_or("default");
+            let env_name = ctx.environment.unwrap_or("global");
             let mut context_msg = format!("Add '{}' to your txtx.yml file", ctx.input_name);
 
             if ctx.environment.is_some() && ctx.environment != Some("global") {

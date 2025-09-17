@@ -70,8 +70,17 @@ impl Manifest {
                         if let Some(env_map) = env_value.as_mapping() {
                             let mut env_vars = HashMap::new();
                             for (key, value) in env_map {
-                                if let (Some(k), Some(v)) = (key.as_str(), value.as_str()) {
-                                    env_vars.insert(k.to_string(), v.to_string());
+                                if let Some(k) = key.as_str() {
+                                    // Convert any YAML value to string representation
+                                    let v = match value {
+                                        serde_yml::Value::String(s) => s.clone(),
+                                        serde_yml::Value::Number(n) => n.to_string(),
+                                        serde_yml::Value::Bool(b) => b.to_string(),
+                                        serde_yml::Value::Null => "null".to_string(),
+                                        // For complex types, use debug representation or YAML serialization
+                                        _ => serde_yml::to_string(value).unwrap_or_else(|_| format!("{:?}", value))
+                                    };
+                                    env_vars.insert(k.to_string(), v);
                                 }
                             }
                             environments.insert(env_name.to_string(), env_vars);

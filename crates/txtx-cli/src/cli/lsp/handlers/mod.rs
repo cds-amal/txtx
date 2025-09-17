@@ -8,15 +8,18 @@ use lsp_types::*;
 
 mod completion;
 mod definition;
+mod definition_enhanced;
 mod diagnostics;
 mod document_sync;
 mod hover;
+pub mod workspace;
 
 pub use completion::CompletionHandler;
-pub use definition::DefinitionHandler;
+pub use definition_enhanced::EnhancedDefinitionHandler;
 pub use diagnostics::DiagnosticsHandler;
 pub use document_sync::DocumentSyncHandler;
 pub use hover::HoverHandler;
+pub use workspace::WorkspaceHandler;
 
 /// Base trait for all LSP handlers
 pub trait Handler: Send + Sync {
@@ -40,21 +43,24 @@ pub trait TextDocumentHandler: Handler {
 /// Container for all handlers
 pub struct Handlers {
     pub completion: CompletionHandler,
-    pub definition: DefinitionHandler,
+    pub definition: EnhancedDefinitionHandler,
     pub diagnostics: DiagnosticsHandler,
     pub hover: HoverHandler,
     pub document_sync: DocumentSyncHandler,
+    pub workspace: WorkspaceHandler,
 }
 
 impl Handlers {
     /// Create a new set of handlers sharing the same workspace
     pub fn new(workspace: SharedWorkspaceState) -> Self {
+        let workspace_handler = WorkspaceHandler::new(workspace.clone());
         Self {
             completion: CompletionHandler::new(workspace.clone()),
-            definition: DefinitionHandler::new(workspace.clone()),
+            definition: EnhancedDefinitionHandler::new(workspace.clone()),
             diagnostics: DiagnosticsHandler::new(workspace.clone()),
             hover: HoverHandler::new(workspace.clone()),
-            document_sync: DocumentSyncHandler::new(workspace),
+            document_sync: DocumentSyncHandler::new(workspace.clone()),
+            workspace: workspace_handler,
         }
     }
 }

@@ -168,6 +168,17 @@ export async function activate(context: vscode.ExtensionContext) {
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 
+  // Add environment selector status bar item
+  const envStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+  // Use workspace state instead of configuration for persistence
+  const savedEnv = context.workspaceState.get<string>('selectedEnvironment') || 'global';
+  envStatusBarItem.text = `$(globe) Txtx Env: ${savedEnv}`;
+  envStatusBarItem.tooltip = `Current Txtx environment: ${savedEnv}\nClick to change`;
+  envStatusBarItem.command = 'txtx.selectEnvironment';
+  envStatusBarItem.show();
+  context.subscriptions.push(envStatusBarItem);
+
+
   // Handle client state changes
   client.onDidChangeState((event) => {
     outputChannel.appendLine(`[State Change] Old: ${event.oldState}, New: ${event.newState}`);
@@ -239,8 +250,47 @@ export async function activate(context: vscode.ExtensionContext) {
       await client.start();
     }
   });
-  
-  context.subscriptions.push(showLogsCommand, testDefinitionCommand, restartLspCommand);
+
+  const selectEnvironmentCommand = vscode.commands.registerCommand('txtx.selectEnvironment', async () => {
+    outputChannel.appendLine('Requesting available environments from LSP...');
+
+    try {
+      // Request available environments from the LSP
+      const environments = await client.sendRequest<string[]>('workspace/environments');
+
+      if (!environments || environments.length === 0) {
+        vscode.window.showInformationMessage('No environments found in the workspace');
+        return;
+      }
+
+      // Show quick pick to user
+      const selected = await vscode.window.showQuickPick(environments, {
+        placeHolder: 'Select environment for Txtx validation',
+        title: 'Txtx Environment Selector'
+      });
+
+      if (selected) {
+        outputChannel.appendLine(`User selected environment: ${selected}`);
+
+        // Notify LSP of the environment change
+        await client.sendNotification('workspace/setEnvironment', { environment: selected });
+
+        // Update status bar
+        envStatusBarItem.text = `$(globe) Txtx Env: ${selected}`;
+        envStatusBarItem.tooltip = `Current Txtx environment: ${selected}\nClick to change`;
+
+        // Store in workspace state instead of configuration
+        await context.workspaceState.update('selectedEnvironment', selected);
+
+        vscode.window.showInformationMessage(`Switched to environment: ${selected}`);
+      }
+    } catch (error) {
+      outputChannel.appendLine(`Error selecting environment: ${error}`);
+      vscode.window.showErrorMessage(`Failed to get environments: ${error}`);
+    }
+  });
+
+  context.subscriptions.push(showLogsCommand, testDefinitionCommand, restartLspCommand, selectEnvironmentCommand);
 
   // Start the client
   try {
@@ -264,6 +314,14 @@ export async function activate(context: vscode.ExtensionContext) {
       if (client.protocol2CodeConverter) {
         outputChannel.appendLine('Protocol converter available - server should be functional');
       }
+
+      // Always send the saved environment to the LSP (even if it's 'global')
+      // This ensures the LSP knows what environment the user had selected previously
+      outputChannel.appendLine(`Sending saved environment to LSP: ${savedEnv}`);
+      client.sendNotification('workspace/setEnvironment', { environment: savedEnv }).catch(err => {
+        outputChannel.appendLine(`Failed to set environment: ${err}`);
+      });
+
     }, 2000);
     
   } catch (error) {

@@ -56,6 +56,15 @@ impl DiagnosticsHandler {
 
     /// Get diagnostics without PublishDiagnosticsParams wrapper
     pub fn get_diagnostics(&self, uri: &Url) -> Vec<Diagnostic> {
+        self.get_diagnostics_with_env(uri, None)
+    }
+
+    /// Get diagnostics with environment context
+    pub fn get_diagnostics_with_env(
+        &self,
+        uri: &Url,
+        environment: Option<&str>,
+    ) -> Vec<Diagnostic> {
         let workspace = self.workspace.read();
 
         if let Some(document) = workspace.get_document(uri) {
@@ -69,8 +78,8 @@ impl DiagnosticsHandler {
                         uri,
                         document.content(),
                         Some(manifest),
-                        None, // TODO: Get environment from workspace state
-                        &[],  // TODO: Get CLI inputs from workspace state
+                        environment,
+                        &[], // TODO: Get CLI inputs from workspace state
                     )
                 } else {
                     // Fall back to basic HCL validation

@@ -6,6 +6,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use txtx_addon_kit::types::functions::FunctionSpecification;
+use txtx_addon_kit::types::signers::SignerSpecification;
 use txtx_addon_kit::Addon;
 
 /// Generate hover documentation for a function specification
@@ -223,6 +224,48 @@ mod tests {
     }
 
     #[test]
+    fn test_signer_hover_generation() {
+        // Test building signer hover map to see what's available
+        lazy_static! {
+            static ref SIGNER_HOVER_MAP: HashMap<String, String> = {
+                let mut hover_map = HashMap::new();
+                let addons = get_available_addons();
+
+                for addon in addons {
+                    let namespace = addon.get_namespace();
+                    let signers = addon.get_signers();
+
+                    for signer_spec in signers {
+                        let full_name = format!("{}::{}", namespace, signer_spec.matcher);
+                        println!("Signer found: {} (matcher: {})", signer_spec.name, full_name);
+                        let hover_text = generate_signer_hover_text(&signer_spec);
+                        hover_map.insert(full_name, hover_text);
+                    }
+                }
+
+                hover_map
+            };
+        }
+
+        println!("Available signers:");
+        for key in SIGNER_HOVER_MAP.keys() {
+            println!("  - {}", key);
+        }
+
+        // Test evm::web_wallet specifically
+        let web_wallet_hover = get_signer_hover("evm::web_wallet");
+        assert!(web_wallet_hover.is_some(), "Should have hover for evm::web_wallet");
+
+        if let Some(hover_text) = web_wallet_hover {
+            println!("Hover for evm::web_wallet:");
+            println!("{}", hover_text);
+            assert!(hover_text.contains("Signer: `EVM Web Wallet`"));
+            assert!(hover_text.contains("wagmi"));
+            assert!(hover_text.contains("Parameters"));
+        }
+    }
+
+    #[test]
     fn test_specific_function_hover_content() {
         // Test that specific functions have proper hover documentation
         let evm_contract_hover = get_function_hover("evm::get_contract_from_foundry_project");
@@ -248,4 +291,60 @@ mod tests {
             println!("{}", hover);
         }
     }
+}
+
+/// Generate hover documentation for a signer specification
+fn generate_signer_hover_text(spec: &SignerSpecification) -> String {
+    let mut content = String::new();
+
+    // Signer name
+    content.push_str(&format!("### Signer: `{}`\n\n", spec.name));
+
+    // Documentation
+    content.push_str(&spec.documentation);
+    content.push_str("\n\n");
+
+    // Inputs
+    if !spec.inputs.is_empty() {
+        content.push_str("**Parameters:**\n");
+        for input in &spec.inputs {
+            let optional = if input.optional { " _(optional)_" } else { "" };
+            content.push_str(&format!("- `{}`: {}{}\n", input.name, input.documentation, optional));
+        }
+        content.push_str("\n");
+    }
+
+    // Example
+    if !spec.example.is_empty() {
+        content.push_str("**Example:**\n```hcl\n");
+        content.push_str(&spec.example);
+        content.push_str("\n```");
+    }
+
+    content
+}
+
+/// Get hover documentation for a signer by its full name
+pub fn get_signer_hover(signer_name: &str) -> Option<String> {
+    lazy_static! {
+        static ref SIGNER_HOVER_MAP: HashMap<String, String> = {
+            let mut hover_map = HashMap::new();
+            let addons = get_available_addons();
+
+            for addon in addons {
+                let namespace = addon.get_namespace();
+                let signers = addon.get_signers();
+
+                for signer_spec in signers {
+                    let full_name = format!("{}::{}", namespace, signer_spec.matcher);
+                    let hover_text = generate_signer_hover_text(&signer_spec);
+                    hover_map.insert(full_name, hover_text);
+                }
+            }
+
+            hover_map
+        };
+    }
+
+    SIGNER_HOVER_MAP.get(signer_name).cloned()
 }

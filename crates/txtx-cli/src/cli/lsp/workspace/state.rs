@@ -19,6 +19,8 @@ pub struct WorkspaceState {
     runbook_to_manifest: HashMap<Url, Url>,
     /// Cached environment variables for quick lookup
     environment_vars: HashMap<String, HashMap<String, String>>,
+    /// The currently selected environment from VS Code
+    current_environment: Option<String>,
 }
 
 impl WorkspaceState {
@@ -29,6 +31,7 @@ impl WorkspaceState {
             manifests: HashMap::new(),
             runbook_to_manifest: HashMap::new(),
             environment_vars: HashMap::new(),
+            current_environment: None,
         }
     }
 
@@ -148,6 +151,16 @@ impl WorkspaceState {
                 }
             }
         }
+    }
+
+    /// Get the currently selected environment
+    pub fn get_current_environment(&self) -> Option<String> {
+        self.current_environment.clone()
+    }
+
+    /// Set the currently selected environment
+    pub fn set_current_environment(&mut self, environment: Option<String>) {
+        self.current_environment = environment;
     }
 }
 

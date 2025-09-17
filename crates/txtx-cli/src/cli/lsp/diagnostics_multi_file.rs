@@ -85,7 +85,7 @@ fn validate_multi_file_runbook(
     cli_inputs: &[(String, String)],
 ) -> Vec<Diagnostic> {
     // Load the multi-file runbook
-    let multi_file = match load_multi_file_runbook(runbook_dir, runbook_name) {
+    let multi_file = match load_multi_file_runbook(runbook_dir, runbook_name, environment) {
         Ok(mf) => mf,
         Err(e) => {
             // Return error diagnostic
@@ -197,6 +197,7 @@ fn validate_multi_file_runbook(
 
     // Run doctor validation rules
     let workspace_manifest = lsp_manifest_to_workspace_manifest(lsp_manifest);
+
     let effective_inputs = get_effective_inputs(&workspace_manifest, environment);
 
     // Create validation rules
