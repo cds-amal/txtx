@@ -1,5 +1,8 @@
 //! LSP utility functions
 
+pub mod environment;
+pub mod file_scanner;
+
 use lsp_server::{RequestId, Response};
 use lsp_types::*;
 use serde::de::DeserializeOwned;

@@ -7,10 +7,12 @@ use super::workspace::SharedWorkspaceState;
 use lsp_types::*;
 
 mod completion;
+mod debug_dump;
 mod definition;
 mod definition_enhanced;
 mod diagnostics;
 mod document_sync;
+mod environment_resolver;
 mod hover;
 pub mod workspace;
 
