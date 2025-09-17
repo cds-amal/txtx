@@ -1,7 +1,0 @@
-flow "super1" {
-  // define inputs for the flow
-  chain_id = 11155111
-}
-
-
-
