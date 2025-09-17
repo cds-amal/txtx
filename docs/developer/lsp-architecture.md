@@ -8,7 +8,7 @@ The txtx LSP is implemented as a modular, synchronous language server integrated
 
 ### High-Level Design
 
-```
+```console
 VSCode ←→ stdio ←→ txtx lsp ←→ lsp-server ←→ Handler System
                                                 ↓
                                           Workspace State
@@ -18,7 +18,7 @@ VSCode ←→ stdio ←→ txtx lsp ←→ lsp-server ←→ Handler System
 
 ### Module Structure
 
-```
+```console
 crates/txtx-cli/src/cli/lsp/
 ├── mod.rs                  # Entry point, message loop, request routing
 ├── handlers/               # Modular request handlers
@@ -139,6 +139,7 @@ pub fn validate_runbook(file_uri: &Url, content: &str) -> Vec<Diagnostic> {
 #### Parser Integration
 
 The LSP uses `hcl-edit` for parsing txtx files, leveraging its visitor pattern for efficient AST traversal. This provides:
+
 - Accurate syntax understanding
 - Position tracking for errors
 - Support for HCL features like interpolations
@@ -192,17 +193,21 @@ pub fn get_function_hover_content(namespace: &str, function: &str) -> Option<Str
 ## Performance Characteristics
 
 ### Synchronous Design
+
 Following rust-analyzer's pattern, the LSP is synchronous:
+
 - No async runtime overhead
 - Direct request/response handling
 - Predictable performance
 
 ### Efficient Parsing
+
 - Uses `hcl-edit`'s visitor pattern
 - Only parses changed documents
 - Caches parsed manifests
 
 ### State Management
+
 - `RwLock` allows concurrent reads
 - Workspace state is lightweight
 - No heavy computations in handlers
@@ -275,6 +280,7 @@ Based on [ADR-001](doc/adr/001-eliminate-lsp-server-crate.md):
 ### Parser Choice
 
 Using `hcl-edit` instead of tree-sitter because:
+
 - Already used by txtx-core
 - Native Rust implementation
 - Good error recovery
@@ -285,11 +291,13 @@ Using `hcl-edit` instead of tree-sitter because:
 ### 1. Doctor Command Integration
 
 The LSP reuses doctor's validation infrastructure:
+
 - Same addon loading mechanism
 - Same validation rules
 - Consistent error messages
 
 **Current Implementation**:
+
 - The `diagnostics.rs` module directly calls HCL validation via `txtx_core::validation::hcl_validator`
 - Document sync handler triggers validation on save
 - The `DiagnosticsHandler` in `handlers/diagnostics.rs` has TODOs for deeper doctor integration due to manifest type differences between LSP's simplified `Manifest` and doctor's `WorkspaceManifest`
@@ -297,6 +305,7 @@ The LSP reuses doctor's validation infrastructure:
 ### 2. Addon System
 
 All addon specifications are loaded for validation:
+
 ```rust
 let addons = addon_registry::get_all_addons();
 let addon_specs = addon_registry::extract_addon_specifications(&addons);
@@ -305,6 +314,7 @@ let addon_specs = addon_registry::extract_addon_specifications(&addons);
 ### 3. Manifest System
 
 The LSP understands txtx's manifest structure:
+
 - Environment inheritance
 - Multi-file runbooks
 - Variable resolution order
@@ -328,6 +338,7 @@ mod tests {
 ### Integration Tests
 
 Located in various test files:
+
 - Workspace state building
 - Handler functionality
 - Diagnostic conversion
@@ -341,6 +352,7 @@ Located in various test files:
 ## Current Implementation Status
 
 ### Working Features
+
 - **Document Synchronization**: Full document lifecycle tracking (open, change, save, close)
 - **HCL Validation**: Real-time syntax and semantic validation via `diagnostics.rs`
 - **Addon Integration**: All addons are loaded and their specifications used for validation
@@ -351,6 +363,7 @@ Located in various test files:
 The validation flow is split between two components:
 
 1. **`handlers/document_sync.rs`**: Triggers validation on document save
+
    ```rust
    pub fn did_save(&self, params: DidSaveTextDocumentParams) -> Option<PublishDiagnosticsParams> {
        let diagnostics = if document.is_runbook() {
@@ -363,6 +376,7 @@ The validation flow is split between two components:
    ```
 
 2. **`diagnostics.rs`**: Performs actual HCL validation
+
    ```rust
    pub fn validate_runbook(file_uri: &Url, content: &str) -> Vec<Diagnostic> {
        // Loads addons, runs HCL validation, converts to diagnostics
@@ -382,12 +396,14 @@ The validation flow is split between two components:
 ## Future Enhancements
 
 ### Near Term
+
 - [ ] Complete diagnostics handler integration
 - [ ] Add references provider (find all references)
 - [ ] Implement document symbols (outline view)
 - [ ] Add code actions for quick fixes
 
 ### Long Term
+
 - [ ] Multi-workspace support
 - [ ] Semantic token provider (semantic highlighting)
 - [ ] Rename refactoring

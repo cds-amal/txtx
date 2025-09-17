@@ -5,11 +5,13 @@ This document outlines the testing conventions and cargo aliases used in the txt
 ## Test Organization
 
 ### Unit Tests
+
 - **Location**: Within `src/` directories alongside the code they test
 - **Purpose**: Test individual functions, modules, and components in isolation
 - **Naming**: Follow Rust conventions (`#[cfg(test)] mod tests`)
 
 ### Integration Tests  
+
 - **Location**: In `tests/` directories at the crate level
 - **Purpose**: Test complete workflows and interactions between components
 - **Naming**: Descriptive test file names (e.g., `doctor_tests.rs`, `lsp_hover_test.rs`)
@@ -19,6 +21,7 @@ This document outlines the testing conventions and cargo aliases used in the txt
 We use a consistent naming pattern for test aliases: `test-[scope]-[type]-[target]`
 
 ### Pattern Components
+
 - **scope**: The crate being tested (e.g., `cli`, `core`, `addon-kit`)
 - **type**: Either `unit` or `int` (integration)
 - **target**: Optional specific module or test file
@@ -26,6 +29,7 @@ We use a consistent naming pattern for test aliases: `test-[scope]-[type]-[targe
 ### Available Aliases
 
 #### Unit Test Aliases
+
 ```bash
 cargo test-cli-unit           # All unit tests in txtx-cli
 cargo test-cli-unit-doctor    # Only doctor module unit tests
@@ -35,6 +39,7 @@ cargo test-addon-kit-unit     # All unit tests in txtx-addon-kit
 ```
 
 #### Integration Test Aliases
+
 ```bash
 cargo test-cli-int            # All integration tests for txtx-cli
 cargo test-cli-int-doctor     # Original doctor integration tests
@@ -43,6 +48,7 @@ cargo test-cli-int-lsp        # LSP integration tests
 ```
 
 #### Convenience Aliases
+
 ```bash
 cargo test-cli                # All CLI tests (unit + integration)
 cargo build-cli               # Build CLI without supervisor UI
@@ -52,6 +58,7 @@ cargo build-cli-release       # Release build without supervisor UI
 ## Examples
 
 ### Testing a specific module
+
 ```bash
 # Run only doctor unit tests
 cargo test-cli-unit-doctor
@@ -61,6 +68,7 @@ cargo test-cli-int-doctor
 ```
 
 ### Testing during development
+
 ```bash
 # Quick test run without supervisor UI build
 cargo test-cli-unit
@@ -70,6 +78,7 @@ cargo test-cli-int-doctor-new
 ```
 
 ### Running specific test patterns
+
 ```bash
 # Run a specific test by name
 cargo test-cli-unit test_input_defined_rule
@@ -81,14 +90,18 @@ cargo test-cli-int validation
 ## RunbookBuilder vs Integration Tests
 
 ### When to Use RunbookBuilder
+
 The `RunbookBuilder` in `txtx-test-utils` is ideal for:
+
 - Unit testing HCL syntax validation
 - Testing basic semantic errors (unknown namespaces, action types)
 - Quick validation tests that focus on runbook structure
 - Reducing boilerplate in test code
 
 ### When to Use Integration Tests
+
 Keep integration tests for scenarios that RunbookBuilder cannot handle:
+
 - **Doctor-specific validation**: Undefined signers, invalid field access, cross-references
 - **Multi-file runbooks**: Testing file imports and includes
 - **Command behavior**: Testing exact error messages, line numbers, JSON output
@@ -96,6 +109,7 @@ Keep integration tests for scenarios that RunbookBuilder cannot handle:
 - **Full validation pipeline**: When you need the complete doctor analysis
 
 ### Example Decision
+
 ```rust
 // ✅ Use RunbookBuilder for basic validation
 #[test]

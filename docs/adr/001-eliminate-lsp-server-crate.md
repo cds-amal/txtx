@@ -1,17 +1,20 @@
 # ADR-001: Eliminate txtx-lsp-server Crate
 
 ## Status
+
 Accepted
 
 ## Date
-2024-12-12
+
+2025-09-1
 
 ## Context
 
 After migrating from `tower-lsp` to `lsp-server` (following rust-analyzer's architecture), we have a separate `txtx-lsp-server` crate that contains the LSP backend implementation. This crate structure was inherited from the original tower-lsp design, where the async runtime and complex trait system necessitated separation.
 
 ### Current Architecture
-```
+
+```console
 txtx-cli
 ├── src/cli/lsp.rs (message loop)
 └── depends on → txtx-lsp-server
@@ -23,6 +26,7 @@ txtx-cli
 ```
 
 ### Problems with Current Structure
+
 1. **Unnecessary Indirection**: The separate crate adds complexity without benefits
 2. **Dead Code**: 70% of the crate (51KB out of 70KB) is unused legacy code
 3. **Maintenance Overhead**: Extra crate to version, build, and maintain
@@ -32,12 +36,14 @@ txtx-cli
 ## Decision
 
 Eliminate the `txtx-lsp-server` crate entirely by:
+
 1. Moving `backend_sync.rs` directly into `txtx-cli/src/cli/lsp/backend.rs`
 2. Deleting the entire `txtx-lsp-server` crate
 3. Removing the dependency from `txtx-cli/Cargo.toml`
 
 ### New Architecture
-```
+
+```console
 txtx-cli
 └── src/cli/lsp/
     ├── mod.rs (message loop, routes requests)
@@ -47,6 +53,7 @@ txtx-cli
 ## Consequences
 
 ### Positive
+
 - **Simpler Architecture**: One less crate to understand and maintain
 - **Faster Compilation**: Fewer crate boundaries means better optimization
 - **Cleaner Dependencies**: Removes unused dependencies from the project
@@ -55,27 +62,32 @@ txtx-cli
 - **Easier Navigation**: Developers can find all LSP code in one place
 
 ### Negative
+
 - **Larger CLI Module**: The CLI crate grows by ~500 lines (acceptable)
 - **No Separate Testing**: Can't test LSP backend in isolation (but we test at protocol level anyway)
 - **Less Modularity**: Can't publish LSP as a separate crate (not needed)
 
 ### Neutral
+
 - **Git History**: History is preserved through git, though file moves
 - **Breaking Change**: Internal architecture change, no external API impact
 
 ## Alternatives Considered
 
 ### 1. Keep Separate Crate but Clean It Up
+
 - **Pros**: Maintains separation of concerns
 - **Cons**: Still has unnecessary indirection for no benefit
 - **Rejected**: The separation provides no value since LSP is txtx-specific
 
 ### 2. Create a Workspace-Level LSP Crate
+
 - **Pros**: Could potentially share with other tools
 - **Cons**: No other tools need this LSP implementation
 - **Rejected**: Over-engineering for a hypothetical future need
 
 ### 3. Move to txtx-core
+
 - **Pros**: Central location for core functionality
 - **Cons**: LSP is CLI-specific, not core logic
 - **Rejected**: Would pollute core with CLI concerns

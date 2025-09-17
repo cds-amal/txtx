@@ -6,7 +6,7 @@ The doctor command is implemented as a modular, extensible validation system tha
 
 ## Module Structure
 
-```
+```console
 crates/txtx-cli/src/cli/doctor/
 ├── mod.rs              # Main orchestrator (195 lines)
 ├── config.rs           # Configuration management
@@ -130,23 +130,28 @@ pub fn display(result: &ValidationResult) {
 ## Validation Flow
 
 ### 1. Configuration Phase
-```
+
+```text
 DoctorConfig::new() → resolve_format() → determine output format
 ```
 
 ### 2. Discovery Phase
-```
+
+```text
 WorkspaceAnalyzer::new() → discover_runbooks() → find all .tx files
 ```
 
 ### 3. Collection Phase
+
 The HCL visitor collects all definitions in a first pass:
+
 - Actions and their types
 - Variables and signers
 - Outputs
 - Flow definitions
 
 For multi-file runbooks, the analyzer combines content from all files:
+
 ```rust
 // In analyze_runbook_with_manifest()
 if runbook_sources.tree.len() > 1 {
@@ -167,7 +172,9 @@ if runbook_sources.tree.len() > 1 {
 ```
 
 ### 4. Validation Phase
+
 The visitor validates references in a second pass:
+
 - Input references exist
 - Action outputs are valid
 - Signer references are defined
@@ -176,7 +183,8 @@ The visitor validates references in a second pass:
 For multi-file runbooks, errors are mapped back to their original files using the `file_boundaries` tracking.
 
 ### 5. Formatting Phase
-```
+
+```console
 ValidationResult → OutputFormatter → Terminal/JSON/Quickfix
 ```
 
@@ -305,6 +313,7 @@ mod tests {
 ### Integration Tests
 
 Located in `tests/fixtures/doctor/`:
+
 - `missing_inputs.tx` - Tests input validation
 - `invalid_outputs.tx` - Tests output validation
 - `circular_deps.tx` - Tests dependency checking
@@ -322,9 +331,11 @@ cargo test --package txtx-cli doctor -- --nocapture
 ## Performance Considerations
 
 ### 1. Lazy File Reading
+
 Files are only read when needed, not all at once.
 
 ### 2. Parallel Validation
+
 When validating multiple runbooks, they can be processed in parallel:
 
 ```rust
@@ -334,6 +345,7 @@ runbooks.par_iter()
 ```
 
 ### 3. Caching
+
 The addon specifications are loaded once and reused across all validations.
 
 ## Error Handling
@@ -351,10 +363,13 @@ pub fn run_doctor(...) -> Result<(), Report<DoctorError>>
 ## Future Enhancements
 
 ### 1. Custom Rule Plugins
+
 Allow users to define custom validation rules in their projects.
 
 ### 2. Auto-fix Support
+
 Some issues could be automatically fixed:
+
 ```rust
 pub trait AutoFixableRule: ValidationRule {
     fn can_fix(&self) -> bool;
@@ -363,10 +378,13 @@ pub trait AutoFixableRule: ValidationRule {
 ```
 
 ### 3. Incremental Validation
+
 Only re-validate changed files for better performance in large projects.
 
 ### 4. Rule Configuration
+
 Allow rules to be configured in `txtx.yml`:
+
 ```yaml
 doctor:
   rules:

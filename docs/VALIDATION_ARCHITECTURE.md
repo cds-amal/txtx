@@ -5,6 +5,7 @@ This document describes the validation system architecture in txtx, including th
 ## Overview
 
 The txtx validation system provides multiple levels of validation:
+
 1. **HCL Syntax Validation** - Validates the runbook syntax
 2. **Semantic Validation** - Checks references, types, and addon specifications
 3. **Manifest Validation** - Validates environment variables and inputs against a workspace manifest

@@ -54,12 +54,14 @@ fn test_undefined_variable() {
 #### RunbookBuilder Capabilities and Limitations
 
 **What RunbookBuilder CAN test:**
+
 - HCL syntax validation
 - Basic semantic errors (unknown namespaces, invalid action types)
 - Runbook structure and composition
 - Environment variable presence (but not usage validation)
 
 **What RunbookBuilder CANNOT test:**
+
 - Doctor command's enhanced validation:
   - Undefined signer references
   - Invalid action output field access
@@ -71,6 +73,7 @@ fn test_undefined_variable() {
 - Command-specific behavior (doctor, LSP, etc.)
 
 **When to use integration tests instead:**
+
 ```rust
 // Use integration tests for doctor-specific validation
 #[test]
@@ -135,7 +138,7 @@ fn test_blockchain_interaction() {
 
 ### Directory Structure
 
-```
+```console
 crates/txtx-core/
 ├── src/
 │   └── parser/
@@ -205,6 +208,7 @@ fn test_parse_error() {
 ### Build Failures
 
 If you see supervisor UI build errors:
+
 ```bash
 # Use CLI-only commands
 cargo test-cli
@@ -214,6 +218,7 @@ cargo build-cli
 ### Slow Tests
 
 For faster iteration:
+
 ```bash
 # Run only your specific test
 cargo test test_my_function
@@ -225,6 +230,7 @@ cargo test --lib
 ### Test Output
 
 To see println! output:
+
 ```bash
 cargo test -- --nocapture
 ```

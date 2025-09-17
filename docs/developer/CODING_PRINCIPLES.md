@@ -5,10 +5,11 @@ This guide captures the architectural principles and coding patterns established
 ## Core Principles
 
 ### 1. Modular Architecture Over Monolithic Files
+
 **❌ Avoid**: Single files exceeding 500 lines with mixed responsibilities  
 **✅ Prefer**: Modular structure with clear separation of concerns
 
-```
+```console
 module/
 ├── mod.rs           # Thin orchestrator (<200 lines)
 ├── config.rs        # Configuration types
@@ -18,6 +19,7 @@ module/
 ```
 
 ### 2. Trait-Based Extensibility
+
 **❌ Avoid**: Hard-coded switch statements and if-else chains  
 **✅ Prefer**: Trait-based design for extensible behavior
 
@@ -34,11 +36,13 @@ impl ValidationRule for MyRule { ... }
 ```
 
 **Real Examples**:
+
 - [`ValidationRule` trait`](crates/txtx-cli/src/cli/doctor/analyzer/rules.rs:6-17) - Base trait for all validation rules
 - [`Handler` trait`](crates/txtx-cli/src/cli/lsp/handlers/mod.rs:22-25) - Base trait for LSP handlers
 - [`InputDefinedRule` implementation`](crates/txtx-cli/src/cli/doctor/analyzer/rules.rs:47-94) - Complete validation rule example
 
 ### 3. Composition Over Inheritance
+
 **❌ Avoid**: Deep inheritance hierarchies or complex state machines  
 **✅ Prefer**: Compose small, focused components
 
@@ -51,6 +55,7 @@ let validator = Validator::new()
 ```
 
 ### 4. Explicit Over Implicit
+
 **❌ Avoid**: Magic strings, hidden dependencies, global state  
 **✅ Prefer**: Explicit dependencies, clear interfaces
 
@@ -69,6 +74,7 @@ fn validate(config: &Config) {
 ## Architectural Patterns
 
 ### 1. Handler Pattern for Request/Response
+
 When building request/response systems (like LSP):
 
 ```rust
@@ -80,6 +86,7 @@ trait Handler {
 ```
 
 ### 2. Visitor Pattern for AST Traversal
+
 When processing hierarchical data:
 
 ```rust
@@ -90,6 +97,7 @@ trait Visitor {
 ```
 
 ### 3. Builder Pattern for Complex Configuration
+
 When constructing complex objects:
 
 ```rust
@@ -100,6 +108,7 @@ WorkspaceBuilder::new()
 ```
 
 ### 4. Adapter Pattern for Integration
+
 When integrating different subsystems:
 
 ```rust
@@ -120,17 +129,20 @@ impl LspValidator for DoctorToLspAdapter {
 ## Code Organization
 
 ### 1. File Structure Guidelines
+
 - **mod.rs**: Public API and orchestration only
 - **types.rs**: Shared types and traits
 - **impl.rs**: Private implementation details
 - **tests.rs**: Unit tests (or separate tests/ directory)
 
 ### 2. Module Boundaries
+
 - Each module should have a single, clear purpose
 - Dependencies should flow in one direction
 - Circular dependencies indicate poor boundaries
 
 ### 3. Error Handling
+
 ```rust
 // Define module-specific error types
 #[derive(Debug, thiserror::Error)]
@@ -148,7 +160,8 @@ pub type Result<T> = std::result::Result<T, DoctorError>;
 ## Testing Strategy
 
 ### 1. Test Organization
-```
+
+```console
 tests/
 ├── unit/           # Fast, isolated unit tests
 ├── integration/    # Cross-module integration tests
@@ -156,6 +169,7 @@ tests/
 ```
 
 ### 2. Test Principles
+
 - **Fast**: Unit tests should run in milliseconds
 - **Isolated**: Tests shouldn't depend on external state
 - **Descriptive**: Test names should explain the scenario
@@ -179,6 +193,7 @@ fn validation_rule_detects_missing_flow_attribute() {
 ## Performance Considerations
 
 ### 1. Lazy Evaluation
+
 **❌ Avoid**: Eagerly computing all possibilities  
 **✅ Prefer**: Compute only what's needed
 
@@ -193,6 +208,7 @@ let files = directory.files()
 ```
 
 ### 2. Caching Strategy
+
 Cache expensive computations at appropriate boundaries:
 
 ```rust
@@ -204,6 +220,7 @@ struct Workspace {
 ## Documentation Standards
 
 ### 1. Module Documentation
+
 Every module should have a clear purpose:
 
 ```rust
@@ -218,6 +235,7 @@ Every module should have a clear purpose:
 ```
 
 ### 2. Public API Documentation
+
 All public items need documentation:
 
 ```rust
@@ -257,7 +275,8 @@ Before submitting PRs, ensure:
 
 ## Examples from the Refactoring
 
-### Before (Monolithic):
+### Before (Monolithic)
+
 ```rust
 // 1000+ line file mixing all concerns
 fn doctor_command(args: Args) {
@@ -269,7 +288,8 @@ fn doctor_command(args: Args) {
 }
 ```
 
-### After (Modular):
+### After (Modular)
+
 ```rust
 // mod.rs - Orchestration only (from crates/txtx-cli/src/cli/doctor/mod.rs:20-40)
 pub fn run_doctor(
@@ -292,6 +312,7 @@ pub fn run_doctor(
 ```
 
 **Key improvements demonstrated**:
+
 - Clear separation: config, workspace, analyzer, formatter are distinct modules
 - Single responsibility: main function only orchestrates
 - Explicit dependencies: all parameters passed explicitly
@@ -300,6 +321,7 @@ pub fn run_doctor(
 ## Metrics for Success
 
 A well-architected module should have:
+
 - **Orchestrator**: <200 lines
 - **Components**: <300 lines each
 - **Clear boundaries**: Can explain purpose in one sentence
@@ -308,6 +330,6 @@ A well-architected module should have:
 
 ## Living Document
 
-This guide is based on successful patterns from the 2024 refactoring. As we discover new patterns or improvements, this document should be updated to reflect current best practices.
+This guide is based on successful patterns from the lsp/doctor development. As we discover new patterns or improvements, this document should be updated to reflect current best practices.
 
 Remember: **Good architecture makes the code tell a story**. Each module should have a clear narrative that any developer can follow.
