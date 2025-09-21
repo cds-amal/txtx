@@ -746,3 +746,120 @@ pub fn abi_decode_logs(abi_map: &Value, logs: &[Log]) -> Result<Vec<Value>, Stri
         .collect::<Result<Vec<Value>, String>>()?;
     Ok(logs)
 }
+
+#[cfg(test)]
+mod repro_tests {
+    use super::*;
+    use txtx_addon_kit::types::types::Value;
+    use alloy::primitives::U256;
+
+    // Helper function to create a Param struct
+    fn create_param(name: &str, ty: &str) -> alloy::json_abi::Param {
+        alloy::json_abi::Param {
+            name: name.to_string(),
+            ty: ty.to_string(),
+            internal_type: None,
+            components: vec![],
+        }
+    }
+
+    #[test]
+    fn test_array_to_uint256_type_validation_bug() {
+        // REPRODUCTION TEST: Demonstrates type validation issue
+        // This test shows that arrays incorrectly convert to uint256 values
+        // due to byte concatenation in Value::to_be_bytes()
+
+        println!("\n=== REPRODUCTION: Array to uint256 Conversion Bug ===\n");
+
+        // Create an array with two integers
+        let value = Value::array(vec![Value::integer(1), Value::integer(2)]);
+        let param = create_param("amount", "uint256");
+
+        // This SHOULD fail with a type mismatch error
+        let result = value_to_abi_param(&value, &param);
+
+        // BUG: This currently succeeds when it shouldn't
+        assert!(result.is_ok(), "BUG: Arrays are incorrectly accepted for uint256");
+
+        // Let's examine what value we actually get
+        if let Ok(DynSolValue::Uint(uint_val, 256)) = result {
+            // The array [1, 2] gets concatenated as big-endian bytes:
+            // Value::integer(1) -> 16 bytes for i128 in big-endian
+            // Value::integer(2) -> 16 bytes for i128 in big-endian
+            // These get concatenated into 32 bytes, forming an unexpected U256
+
+            println!("Input: Array [1, 2]");
+            println!("Expected: Type error (array cannot be uint256)");
+            println!("Actual: Successfully converted to U256");
+            println!("Resulting value: {:#x}", uint_val);
+            println!();
+
+            // The value is some large number, not 1 or 2 or even 3 (sum)
+            assert!(uint_val != U256::from(1), "Value is not 1");
+            assert!(uint_val != U256::from(2), "Value is not 2");
+            assert!(uint_val != U256::from(3), "Value is not sum of array elements");
+
+            println!("This demonstrates data corruption:");
+            println!("- Array [1,2] should not be valid for uint256 parameter");
+            println!("- Bytes are concatenated, creating an unexpected value");
+            println!("- No type validation is performed");
+        } else {
+            panic!("Expected Uint256 but got different type");
+        }
+    }
+
+    #[test]
+    fn test_nested_array_to_uint256_type_validation_bug() {
+        // REPRODUCTION TEST: Even nested arrays incorrectly convert to uint256
+        println!("\n=== REPRODUCTION: Nested Array to uint256 Conversion Bug ===\n");
+
+        // Create a nested array structure
+        let inner1 = Value::array(vec![Value::integer(10), Value::integer(20)]);
+        let inner2 = Value::array(vec![Value::integer(30), Value::integer(40)]);
+        let value = Value::array(vec![inner1, inner2]);
+        let param = create_param("amount", "uint256");
+
+        let result = value_to_abi_param(&value, &param);
+
+        // Check if this produces an error or succeeds (it might fail due to byte length)
+        if result.is_err() {
+            println!("Nested arrays actually fail (good, but for wrong reason)");
+            println!("Error: {:?}", result.err());
+            return;  // Test passes - at least it fails
+        }
+
+        if let Ok(DynSolValue::Uint(uint_val, 256)) = result {
+            println!("Input: Nested Array [[10, 20], [30, 40]]");
+            println!("Expected: Type error (nested array cannot be uint256)");
+            println!("Actual: Successfully converted to U256");
+            println!("Resulting value: {:#x}", uint_val);
+            println!();
+
+            // All nested values get flattened and concatenated as bytes
+            println!("This demonstrates severe type confusion:");
+            println!("- Nested arrays are flattened and concatenated as bytes");
+            println!("- This creates a completely unexpected uint256 value");
+            println!("- Data structure is lost in the conversion");
+        }
+    }
+
+    #[test]
+    fn test_proper_uint256_conversion() {
+        // This test shows the correct behavior for comparison
+        println!("\n=== CORRECT: Integer to uint256 Conversion ===\n");
+
+        let value = Value::integer(42);
+        let param = create_param("amount", "uint256");
+
+        let result = value_to_abi_param(&value, &param);
+        assert!(result.is_ok(), "Integer should convert to uint256");
+
+        if let Ok(DynSolValue::Uint(uint_val, 256)) = result {
+            println!("Input: Integer 42");
+            println!("Expected: U256 value of 42");
+            println!("Actual: {}", uint_val);
+            assert_eq!(uint_val, U256::from(42), "Value should be 42");
+            println!("✓ Correct conversion");
+        }
+    }
+}
