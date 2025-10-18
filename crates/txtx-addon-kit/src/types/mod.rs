@@ -22,6 +22,7 @@ pub mod commands;
 pub mod diagnostics;
 pub mod embedded_runbooks;
 pub mod frontend;
+pub mod function_errors;
 pub mod functions;
 pub mod package;
 pub mod signers;

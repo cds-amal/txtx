@@ -8,6 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value as JsonValue};
 use std::collections::VecDeque;
 use std::fmt::{self, Debug};
+use strum_macros::Display as StrumDisplay;
 
 use crate::helpers::hcl::{
     collect_constructs_references_from_block, collect_constructs_references_from_expression,
@@ -1021,17 +1022,27 @@ impl fmt::Debug for AddonData {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, StrumDisplay)]
 pub enum Type {
+    #[strum(serialize = "bool")]
     Bool,
+    #[strum(serialize = "null")]
     Null,
+    #[strum(serialize = "integer")]
     Integer,
+    #[strum(serialize = "float")]
     Float,
+    #[strum(serialize = "string")]
     String,
+    #[strum(serialize = "buffer")]
     Buffer,
+    #[strum(to_string = "object")]
     Object(ObjectDefinition),
+    #[strum(to_string = "addon({0})")]
     Addon(String),
+    #[strum(to_string = "array[{0}]")]
     Array(Box<Type>),
+    #[strum(to_string = "map")]
     Map(ObjectDefinition),
 }
 
@@ -1263,22 +1274,7 @@ impl Type {
     }
 }
 
-impl Type {
-    pub fn to_string(&self) -> String {
-        match self {
-            Type::Bool => "bool".into(),
-            Type::Null => "null".into(),
-            Type::Integer => "integer".into(),
-            Type::Float => "float".into(),
-            Type::String => "string".into(),
-            Type::Buffer => "buffer".into(),
-            Type::Object(_) => "object".into(),
-            Type::Addon(addon) => format!("addon({})", addon),
-            Type::Array(typing) => format!("array[{}]", typing.to_string()),
-            Type::Map(_) => "map".into(),
-        }
-    }
-}
+// to_string() is now provided by the StrumDisplay derive
 
 impl Default for Type {
     fn default() -> Self {
