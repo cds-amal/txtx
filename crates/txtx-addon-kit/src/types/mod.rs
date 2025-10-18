@@ -24,6 +24,7 @@ pub mod embedded_runbooks;
 pub mod frontend;
 pub mod function_errors;
 pub mod functions;
+pub mod namespace;
 pub mod package;
 pub mod signers;
 pub mod stores;
