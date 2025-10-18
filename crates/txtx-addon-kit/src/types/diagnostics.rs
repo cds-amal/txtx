@@ -1,6 +1,8 @@
 use std::{fmt::Display, ops::Range};
 
 use hcl_edit::{expr::Expression, structure::Block};
+use serde::{Deserialize, Serialize};
+use strum_macros::Display as StrumDisplay;
 
 use crate::helpers::fs::FileLocation;
 
@@ -17,21 +19,12 @@ impl DiagnosticSpan {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, StrumDisplay)]
+#[strum(serialize_all = "lowercase")]
 pub enum DiagnosticLevel {
     Note,
     Warning,
     Error,
-}
-
-impl Display for DiagnosticLevel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DiagnosticLevel::Error => write!(f, "error"),
-            DiagnosticLevel::Warning => write!(f, "warning"),
-            DiagnosticLevel::Note => write!(f, "note"),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
