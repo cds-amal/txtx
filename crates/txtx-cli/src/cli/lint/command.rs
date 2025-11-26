@@ -228,6 +228,7 @@ fn handle_gen_cli(
     // Format output
     let output = format_cli_template(
         &runbook_name,
+        manifest_path,
         environment,
         variables,
     );
@@ -239,13 +240,19 @@ fn handle_gen_cli(
 /// Format CLI template output
 fn format_cli_template(
     runbook_name: &str,
+    manifest_path: Option<&str>,
     environment: Option<&str>,
     mut variables: Vec<txtx_core::runbook::variables::RunbookVariable>,
 ) -> String {
     let mut parts = vec!["txtx".to_string(), "run".to_string(), runbook_name.to_string()];
 
+    if let Some(manifest) = manifest_path {
+        parts.push(" \\\n  --manifest-file-path".to_string());
+        parts.push(manifest.to_string());
+    }
+
     if let Some(env) = environment {
-        parts.push("--env".to_string());
+        parts.push(" \\\n  --env".to_string());
         parts.push(env.to_string());
     }
 
