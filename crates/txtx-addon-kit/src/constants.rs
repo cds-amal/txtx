@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumString, IntoStaticStr};
+use strum::{AsRefStr, Display, EnumString, IntoStaticStr};
 
 /// Keys related to signer operations and signatures
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsRefStr, Display, EnumString, IntoStaticStr)]
@@ -11,6 +11,7 @@ pub enum SignerKey {
     SignatureApproved,
     SignatureSkippable,
     ProvidePublicKeyActionResult,
+    IsBalanceChecked,
 }
 
 /// Keys related to action items
@@ -18,25 +19,27 @@ pub enum SignerKey {
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ActionItemKey {
-    #[strum(serialize = "check_address")]
-    #[serde(rename = "check_address")]
     CheckAddress,
-    #[strum(serialize = "checked_address")]
-    #[serde(rename = "checked_address")]
     CheckedAddress,
-    #[strum(serialize = "check_balance")]
-    #[serde(rename = "check_balance")]
     CheckBalance,
-    #[strum(serialize = "is_balance_checked")]
-    #[serde(rename = "is_balance_checked")]
     IsBalanceChecked,
-    #[strum(serialize = "begin_flow")]
-    #[serde(rename = "begin_flow")]
+    CheckNonce,
+    CheckFee,
+    CheckOutput,
+    ProvidePublicKey,
+    ProvideSignedTransaction,
+    ProvideSignedSquadTransaction,
+    SendTransaction,
+    ReviewDeployedContract,
+    Env,
+    Genesis,
+    ValidateBlock,
     BeginFlow,
-    #[strum(serialize = "re_execute_command")]
-    #[serde(rename = "re_execute_command")]
     ReExecuteCommand,
     Diagnostic,
+    Output,
+    ProvideInput,
+    CheckInput,
 }
 
 /// Keys related to nested constructs
@@ -73,4 +76,16 @@ pub enum ConditionKey {
 pub enum RunbookKey {
     ThirdPartySignatureStatus,
     RunbookCompleteAdditionalInfo,
+}
+
+/// Properties that are inherited by child constructs
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsRefStr, Display, EnumString, IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
+pub enum InheritedPropertyKey {
+    Markdown,
+    MarkdownFilepath,
+    Description,
+    DependsOn,
+    PreCondition,
+    PostCondition,
 }
